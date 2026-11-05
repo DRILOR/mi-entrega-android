@@ -3,7 +3,7 @@
 **Rama:** `etapa1/dailer-usuarios`  
 **Fecha del registro:** 5 de noviembre de 2026  
 **Responsable:** Dailer Almanza  
-**Estado:** funciones principales comprobadas; falta cierre de verificaciones y publicación en `main`.
+**Estado:** pruebas de la etapa aprobadas; pendiente integración del PR a `main` y aceptación del relevo.
 
 ## Implementación
 
@@ -32,8 +32,8 @@
 | T11 | Correo duplicado rechazado | ✅ Confirmado por Dailer |
 | T12 | Mismo nombre de materia en cuentas distintas | ✅ Confirmado por Dailer |
 | T13 | Impedir borrar materia con actividades | ✅ Reconfirmado por Dailer en v2 |
-| T14 | Esquema exportado `2.json` incluido en Git | ⏳ Generado localmente; falta commit |
-| T15 | Segunda ejecución de pruebas tras ajuste final | ⏳ Pendiente |
+| T14 | Esquema exportado `2.json` incluido en Git | ✅ Commit `db2d78b` publicado |
+| T15 | Segunda ejecución de pruebas tras ajuste final | ✅ `testDebugUnitTest` y `assembleDebug`: BUILD SUCCESSFUL |
 | T16 | PR, integración a `main` y acta de relevo | ⏳ Pendiente |
 
 No marcar una verificación como aprobada sin ejecutarla. No incluir contraseñas en capturas ni documentación.

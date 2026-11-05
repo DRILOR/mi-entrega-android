@@ -49,10 +49,11 @@
 
 ## Para cerrar definitivamente la etapa 1
 
-- El archivo de esquema Room `2.json` ya fue generado en la laptop de Dailer; falta incorporarlo al commit.
-- Ejecutar de nuevo pruebas después del ajuste menor que elimina una advertencia de Kotlin.
-- Completar el acta de entrega (fecha, commit y pruebas) y revisar el PR hacia `main`.
-- Integrar únicamente después de aprobar las comprobaciones; entonces inicia el integrante 2.
+- ✅ Esquema de Room `2.json` agregado y publicado en commit `db2d78b`.
+- ✅ Pruebas unitarias repetidas tras el ajuste: `BUILD SUCCESSFUL` (11 s).
+- ✅ Compilación APK repetida tras el ajuste: `BUILD SUCCESSFUL` (4 s).
+- ⏳ Revisar e integrar el Pull Request hacia `main`, y registrar el commit de integración.
+- ⏳ Completar la aceptación del relevo al integrante 2; hasta entonces no comienza a programar.
 
 Ver `ETAPA1_USUARIOS_PRUEBAS.md` para el registro detallado.
 
