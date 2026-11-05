@@ -1,5 +1,20 @@
 # Decisiones del proyecto
 
+## Etapa 1: cuentas locales (noviembre de 2026)
+El docente solicitó una aplicación sencilla. Por ello, las cuentas se almacenan en Room y
+funcionan sin internet, API ni servicio de autenticación externo. Las contraseñas se
+guardan como hash PBKDF2-HMAC-SHA256 con sal aleatoria, no en texto plano. La sesión
+guarda el ID local del estudiante en preferencias privadas. Esto separa la información
+mostrada por la app, pero **no cifra** el archivo de base de datos.
+
+El esquema de Room evoluciona de 1 a 2 con una migración explícita. Los registros previos
+se conservan y se asignan a la primera cuenta creada en una transacción. Cada materia y
+actividad nueva queda asociada a su usuario. Se validará la migración en una instalación
+que ya tenga registros; hasta entonces, la rama no se integra en `main`.
+
+La sincronización entre teléfonos es trabajo futuro, no parte de esta etapa. Véase
+`PLAN_MIGRACION_ONLINE.md`.
+
 ## Plataforma
 Aplicación Android nativa con Kotlin y Jetpack Compose, de acuerdo con la elección del equipo. Android mínimo 8.0 (API 26). La primera entrega usa compileSdk y targetSdk 36.
 

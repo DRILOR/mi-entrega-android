@@ -15,29 +15,42 @@ import java.util.UUID
 
 @RunWith(AndroidJUnit4::class)
 class PersistenceTest {
-    @Test fun persistsAcrossReopenAndProtectsSubjects() = runBlocking {
+    @Test fun isolatesStudentsAndPersistsAcrossReopen() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        val name = "test-${UUID.randomUUID()}.db"
-        fun open() = Room.databaseBuilder(context, PlannerDatabase::class.java, name).build()
+        val databaseName = "test-${UUID.randomUUID()}.db"
+        fun open() = Room.databaseBuilder(context, PlannerDatabase::class.java, databaseName).build()
         var db = open()
         try {
-            db.dao().save(Subject(id = 1, name = "Tecnologías Móviles"))
-            db.dao().save(Assignment(id = 1, title = "Propuesta", subjectId = 1, dueDate = 21000))
+            val dao = db.dao()
+            val studentA = dao.insertUser(StudentUser(displayName = "Ana", email = "ana@test.com",
+                passwordHash = "test", passwordSalt = "test"))
+            val studentB = dao.insertUser(StudentUser(displayName = "Luis", email = "luis@test.com",
+                passwordHash = "test", passwordSalt = "test"))
+            val subjectId = dao.insertSubject(Subject(name = "Tecnologías Móviles", ownerId = studentA))
+            val assignmentId = dao.insertAssignment(Assignment(title = "Propuesta", subjectId = subjectId,
+                dueDate = 21000, ownerId = studentA))
             db.close()
+
             db = open()
-            assertEquals("Propuesta", db.dao().assignments().first().single().title)
+            val reopened = db.dao()
+            assertEquals("Propuesta", reopened.assignments(studentA).first().single().title)
+            assertTrue(reopened.subjects(studentB).first().isEmpty())
+            assertTrue(reopened.assignments(studentB).first().isEmpty())
+            assertEquals(0, reopened.changeStatus(assignmentId, studentB, "Completada"))
+            assertEquals(0, reopened.deleteAssignment(assignmentId, studentB))
+
             var rejected = false
-            try { db.dao().delete(db.dao().subjects().first().single()) }
+            try { reopened.deleteSubject(subjectId, studentA) }
             catch (_: SQLiteConstraintException) { rejected = true }
             assertTrue("No borrar una materia con actividades", rejected)
-            db.dao().changeStatus(1, "Completada")
-            assertEquals("Completada", db.dao().assignments().first().single().status)
-            db.dao().delete(db.dao().assignments().first().single())
-            db.dao().delete(db.dao().subjects().first().single())
-            assertTrue(db.dao().subjects().first().isEmpty())
+            assertEquals(1, reopened.changeStatus(assignmentId, studentA, "Completada"))
+            assertEquals("Completada", reopened.assignments(studentA).first().single().status)
+            assertEquals(1, reopened.deleteAssignment(assignmentId, studentA))
+            assertEquals(1, reopened.deleteSubject(subjectId, studentA))
+            assertTrue(reopened.subjects(studentA).first().isEmpty())
         } finally {
             db.close()
-            context.deleteDatabase(name)
+            context.deleteDatabase(databaseName)
         }
     }
 }
