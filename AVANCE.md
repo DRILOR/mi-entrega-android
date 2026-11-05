@@ -40,14 +40,18 @@
 
 **Precisión:** los resultados manuales son reportados por Dailer durante el recorrido guiado. No constituyen pruebas adicionales automatizadas.
 
+## Últimas comprobaciones manuales (confirmadas el 5 de noviembre)
+
+- ✅ Se rechaza una contraseña equivocada.
+- ✅ Se impide registrar otra cuenta con el mismo correo.
+- ✅ Dos estudiantes pueden tener materias del mismo nombre sin interferirse.
+- ✅ Se impide eliminar una materia que aún tiene actividades.
+
 ## Para cerrar definitivamente la etapa 1
 
-- Comprobar contraseña incorrecta y correo duplicado; registrar el resultado.
-- Confirmar que dos estudiantes puedan usar el mismo nombre de materia sin interferirse.
-- Comprobar que sigue bloqueada la eliminación de una materia con actividades.
-- Confirmar el archivo de esquema exportado de Room `2.json` y agregarlo al commit.
-- Ejecutar nuevamente pruebas después del pequeño ajuste que elimina una advertencia de Kotlin.
-- Completar el acta de entrega (fecha, commit y pruebas) y abrir PR hacia `main`.
+- El archivo de esquema Room `2.json` ya fue generado en la laptop de Dailer; falta incorporarlo al commit.
+- Ejecutar de nuevo pruebas después del ajuste menor que elimina una advertencia de Kotlin.
+- Completar el acta de entrega (fecha, commit y pruebas) y revisar el PR hacia `main`.
 - Integrar únicamente después de aprobar las comprobaciones; entonces inicia el integrante 2.
 
 Ver `ETAPA1_USUARIOS_PRUEBAS.md` para el registro detallado.

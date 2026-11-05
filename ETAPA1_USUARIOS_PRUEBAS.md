@@ -28,11 +28,11 @@
 | T07 | Conservar materias y actividades preexistentes | ✅ Confirmado por Dailer |
 | T08 | Mantener sesión tras cerrar/reabrir | ✅ Confirmado por Dailer |
 | T09 | Dos cuentas con materias/actividades independientes | ✅ Confirmado por Dailer |
-| T10 | Contraseña incorrecta rechazada | ⏳ Pendiente de confirmación |
-| T11 | Correo duplicado rechazado | ⏳ Pendiente de confirmación |
-| T12 | Mismo nombre de materia en cuentas distintas | ⏳ Pendiente de confirmación |
-| T13 | Impedir borrar materia con actividades | ⏳ Pendiente de reconfirmación en v2 |
-| T14 | Esquema exportado `2.json` incluido en Git | ⏳ Pendiente |
+| T10 | Contraseña incorrecta rechazada | ✅ Confirmado por Dailer |
+| T11 | Correo duplicado rechazado | ✅ Confirmado por Dailer |
+| T12 | Mismo nombre de materia en cuentas distintas | ✅ Confirmado por Dailer |
+| T13 | Impedir borrar materia con actividades | ✅ Reconfirmado por Dailer en v2 |
+| T14 | Esquema exportado `2.json` incluido en Git | ⏳ Generado localmente; falta commit |
 | T15 | Segunda ejecución de pruebas tras ajuste final | ⏳ Pendiente |
 | T16 | PR, integración a `main` y acta de relevo | ⏳ Pendiente |
 
