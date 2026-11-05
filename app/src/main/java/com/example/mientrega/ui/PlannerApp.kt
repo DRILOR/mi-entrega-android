@@ -37,8 +37,13 @@ private fun dateLabel(day: Long) = LocalDate.ofEpochDay(day).format(DateTimeForm
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlannerApp(model: PlannerViewModel) {
-    val subjects by model.subjects.collectAsStateWithLifecycle()
-    val assignments by model.assignments.collectAsStateWithLifecycle()
+    val currentUserId by model.activeUserId.collectAsStateWithLifecycle()
+    // El StateFlow puede conservar un valor previo durante un instante tras cambiar de cuenta.
+    // Nunca presentar datos de otro estudiante ni siquiera durante esa transición.
+    val storedSubjects by model.subjects.collectAsStateWithLifecycle()
+    val storedAssignments by model.assignments.collectAsStateWithLifecycle()
+    val subjects = storedSubjects.filter { currentUserId != null && it.ownerId == currentUserId }
+    val assignments = storedAssignments.filter { currentUserId != null && it.ownerId == currentUserId }
     val busy by model.busy.collectAsStateWithLifecycle()
     val message by model.message.collectAsStateWithLifecycle()
     val nav = rememberNavController()
@@ -61,6 +66,8 @@ fun PlannerApp(model: PlannerViewModel) {
             if (!mainScreen) IconButton(onClick = { nav.popBackStack() }, enabled = !busy) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver sin guardar")
             }
+        }, actions = {
+            TextButton(onClick = model::logout, enabled = !busy) { Text("Salir") }
         }) },
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {

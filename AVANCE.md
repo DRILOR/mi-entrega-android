@@ -1,5 +1,16 @@
 # Avance de Mi Entrega
 
+## En preparación: etapa 1 de Dailer (cuentas locales)
+En la rama `etapa1/dailer-usuarios` se preparó el registro e inicio de sesión local,
+la sesión persistente, la separación de datos por estudiante y la migración de Room de
+la versión 1 a la 2. Se añadieron pruebas de seguridad de contraseñas y aislamiento
+de estudiantes. **La compilación, las pruebas automatizadas y el recorrido manual de
+esta nueva rama todavía deben realizarse en Android Studio; no están aprobados.**
+
+El `BUILD SUCCESSFUL` comunicado previamente por Dailer corresponde a las pruebas
+unitarias de la versión base, antes de implementar las cuentas.
+Ver `ETAPA1_USUARIOS_PRUEBAS.md` y `PLAN_MIGRACION_ONLINE.md`.
+
 ## Primera entrega funcional
 Se alcanzó el alcance inicial que el equipo definió como aproximadamente el 40–50 % del proyecto. Es una estimación de alcance, no una medición de líneas de código ni una calificación académica.
 

@@ -12,7 +12,7 @@ Incluye código para navegación, materias, actividades, fechas, prioridades, es
 4. Instalar Android SDK Platform 36 y las herramientas solicitadas por Android Studio si faltan.
 5. Seleccionar un emulador o teléfono y ejecutar la configuración app.
 
-La aplicación requiere Android 8.0 o posterior. No requiere servidor ni cuentas de usuario. La imagen del emulador puede tener una versión superior a la API mínima de la aplicación.
+La aplicación requiere Android 8.0 o posterior. No requiere servidor ni internet. La rama `etapa1/dailer-usuarios` incorpora cuentas **locales**, todavía pendientes de validación en Android Studio. La imagen del emulador puede tener una versión superior a la API mínima de la aplicación.
 
 ## Dónde está cada parte
 - app/src/main/java/com/example/mientrega/MainActivity.kt: punto de entrada y tema.
@@ -33,8 +33,13 @@ La aplicación requiere Android 8.0 o posterior. No requiere servidor ni cuentas
 8. Intentar eliminar su materia; debe impedirlo mientras haya actividades asociadas.
 9. Cancelar una eliminación; el registro debe conservarse.
 
-## Próximos sprints
-Filtros por materia y estado, sección Para hoy por urgencia, recordatorios, mejoras de accesibilidad y documentación final. No se ha añadido sincronización ni registro de usuarios.
+## Etapa actual y próximos sprints
+En `etapa1/dailer-usuarios`, Dailer está incorporando registro/inicio de sesión, sesión local,
+separación de actividades por estudiante y migración Room 1 a 2 sin pérdida de datos.
+Revisar `ETAPA1_USUARIOS_PRUEBAS.md` antes de considerarlo terminado.
+Después corresponden al integrante 2 filtros, sección Para hoy y mejoras de interfaz; al
+integrante 3, recordatorios, QA final y APK. No se ha añadido sincronización entre dispositivos.
+La posible evolución futura se explica en `PLAN_MIGRACION_ONLINE.md`.
 
 ## Herramientas fijadas
 Android Gradle Plugin 9.0.1, Gradle 9.1.0, Kotlin integrado 2.2.10, Compose Compiler 2.2.10, Compose BOM 2025.06.01, Room 2.7.2 y KSP 2.3.4. Estas versiones se fijan para reproducibilidad; no se pretende usar siempre la versión más reciente.
