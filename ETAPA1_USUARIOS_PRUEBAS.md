@@ -1,41 +1,53 @@
 # Etapa 1 — Dailer: cuentas locales y separación de datos
 
 **Rama:** `etapa1/dailer-usuarios`  
-**Estado:** implementación preparada; requiere compilación y pruebas en el equipo de Dailer.
+**Fecha del registro:** 5 de noviembre de 2026  
+**Responsable:** Dailer Almanza  
+**Estado:** funciones principales comprobadas; falta cierre de verificaciones y publicación en `main`.
 
-## Cambios técnicos
+## Implementación
 
-- Room pasa del esquema 1 al 2, crea `users` y añade `ownerId` a materias y actividades.
-- La migración preserva los registros existentes con propietario temporalmente nulo.
-- Al registrar **la primera cuenta**, se asignan en una transacción los registros antiguos
-  a esa cuenta. Las siguientes cuentas empiezan sin datos.
-- El nombre de una materia debe ser único **dentro de cada cuenta**, no globalmente.
-- Las consultas y operaciones de creación, edición y eliminación se limitan al usuario activo.
-- Las contraseñas se derivan con PBKDF2-HMAC-SHA256, sal aleatoria y comparación segura.
-- La sesión se mantiene localmente en este dispositivo hasta cerrar sesión.
-- La base Room no queda cifrada; es una limitación de este proyecto académico local.
+- Room pasa de la versión 1 a la 2; agrega tabla `users` y propietario en materias y actividades.
+- La migración conserva registros antiguos y la primera cuenta los reclama en una transacción.
+- Materias y actividades nuevas se registran con el propietario autenticado.
+- Las consultas y operaciones de edición/eliminación están limitadas al usuario activo.
+- Las contraseñas utilizan PBKDF2-HMAC-SHA256 con sal aleatoria; nunca se guardan en texto plano.
+- La sesión es persistente y local. Las cuentas de diferentes dispositivos no se sincronizan.
+- La base Room no está cifrada; esto es una limitación explícita del proyecto académico.
 
-## Validación solicitada (no marcar aprobada sin ejecutarla)
+## Registro de pruebas
 
-1. Ejecutar `./gradlew.bat testDebugUnitTest` en PowerShell; confirmar `BUILD SUCCESSFUL`.
-2. Ejecutar `./gradlew.bat assembleDebug`; confirmar `BUILD SUCCESSFUL`.
-3. Instalar la actualización sin desinstalar la versión anterior con datos.
-4. Registrar el estudiante A. Confirmar que se conservan las materias y actividades
-   que existían antes del registro y que aparecen solo para A.
-5. Cerrar sesión e iniciar con contraseña equivocada: debe rechazarla.
-6. Iniciar sesión con A: deben reaparecer sus materias y actividades.
-7. Registrar estudiante B, cerrar sesión, iniciar B: debe ver sus listas vacías.
-8. Crear una materia con el mismo nombre para A y B; ambas deben existir por separado.
-9. Crear una actividad en B; iniciar A y comprobar que no aparece allí.
-10. Cerrar la aplicación, abrirla de nuevo y comprobar que se conserva la sesión.
-11. Eliminar una materia con actividades: debe impedirlo.
-12. Ejecutar `./gradlew.bat connectedDebugAndroidTest` con el emulador encendido.
-13. Confirmar la existencia del esquema Room exportado `app/schemas/.../2.json`.
-14. Registrar resultados, errores, versión y capturas antes de integrar a `main`.
+| ID | Comprobación | Estado / evidencia |
+| --- | --- | --- |
+| T01 | `testDebugUnitTest` | ✅ BUILD SUCCESSFUL — Dailer |
+| T02 | `assembleDebug` | ✅ BUILD SUCCESSFUL — Dailer |
+| T03 | `connectedDebugAndroidTest` | ✅ 1 prueba ejecutada; BUILD SUCCESSFUL — Dailer |
+| T04 | Instalar y abrir app actualizada | ✅ Abre correctamente en emulador API 37 |
+| T05 | Mostrar inicio de sesión | ✅ Confirmado |
+| T06 | Registrar cuenta A y acceder a Inicio | ✅ Confirmado |
+| T07 | Conservar materias y actividades preexistentes | ✅ Confirmado por Dailer |
+| T08 | Mantener sesión tras cerrar/reabrir | ✅ Confirmado por Dailer |
+| T09 | Dos cuentas con materias/actividades independientes | ✅ Confirmado por Dailer |
+| T10 | Contraseña incorrecta rechazada | ⏳ Pendiente de confirmación |
+| T11 | Correo duplicado rechazado | ⏳ Pendiente de confirmación |
+| T12 | Mismo nombre de materia en cuentas distintas | ⏳ Pendiente de confirmación |
+| T13 | Impedir borrar materia con actividades | ⏳ Pendiente de reconfirmación en v2 |
+| T14 | Esquema exportado `2.json` incluido en Git | ⏳ Pendiente |
+| T15 | Segunda ejecución de pruebas tras ajuste final | ⏳ Pendiente |
+| T16 | PR, integración a `main` y acta de relevo | ⏳ Pendiente |
 
-## Reglas para cerrar la etapa
+No marcar una verificación como aprobada sin ejecutarla. No incluir contraseñas en capturas ni documentación.
 
-- No utilizar `fallbackToDestructiveMigration` ni borrar los datos de la aplicación.
-- No registrar capturas con contraseñas o información privada.
-- No integrar en `main` hasta superar compilación, pruebas y recorrido manual.
-- Dejar commit con resumen y descripción, registrar el SHA y notificar al integrante 2.
+## Cierre y entrega al integrante 2
+
+**Fecha de cierre:** ____________________  
+**Commit final en `main`:** ____________________  
+**PR integrado:** ____________________  
+**Entregó:** Dailer Almanza  
+**Recibió:** Integrante 2 — nombre pendiente  
+**Pendientes conocidos:** ____________________  
+**Evidencias y capturas:** ____________________  
+
+La etapa se considera terminada cuando los puntos pendientes estén resueltos,
+la versión compilada e instalada funcione y la rama haya sido integrada a `main`.
+Ningún compañero debe comenzar a programar su etapa antes de este relevo.

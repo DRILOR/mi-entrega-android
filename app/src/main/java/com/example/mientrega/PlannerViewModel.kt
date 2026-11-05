@@ -122,10 +122,11 @@ class PlannerViewModel(app: Application) : AndroidViewModel(app) {
         if (error != null) { message.value = error; return }
         write {
             val account = dao.userByEmail(AuthRules.normalizeEmail(email))
-            val correct = account != null && withContext(Dispatchers.Default) {
+                ?: throw IllegalArgumentException("Correo o contraseña incorrectos.")
+            val correct = withContext(Dispatchers.Default) {
                 PasswordHasher.verify(password, PasswordDigest(account.passwordHash, account.passwordSalt))
             }
-            if (!correct || account == null) {
+            if (!correct) {
                 throw IllegalArgumentException("Correo o contraseña incorrectos.")
             }
             startSession(account.id)
