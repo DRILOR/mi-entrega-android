@@ -19,6 +19,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -44,6 +47,7 @@ fun PlannerApp(model: PlannerViewModel) {
     val storedAssignments by model.assignments.collectAsStateWithLifecycle()
     val subjects = storedSubjects.filter { currentUserId != null && it.ownerId == currentUserId }
     val assignments = storedAssignments.filter { currentUserId != null && it.ownerId == currentUserId }
+    val today = rememberLocalDay()
     val busy by model.busy.collectAsStateWithLifecycle()
     val message by model.message.collectAsStateWithLifecycle()
     val nav = rememberNavController()
@@ -85,13 +89,13 @@ fun PlannerApp(model: PlannerViewModel) {
     ) { padding ->
         NavHost(navController = nav, startDestination = "home", modifier = Modifier.padding(padding)) {
             composable("home") {
-                HomeScreen(assignments, subjects, onAdd = { nav.navigate(if (subjects.isEmpty()) "subject/0" else "assignment/0") },
+                HomeScreen(assignments, subjects, today, onAdd = { nav.navigate(if (subjects.isEmpty()) "subject/0" else "assignment/0") },
                     onEdit = { nav.navigate("assignment/${it.id}") })
             }
             composable("subjects") {
                 LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     item { Button(onClick = { nav.navigate("subject/0") }, modifier = Modifier.fillMaxWidth()) { Text("+ Nueva materia") } }
-                    if (subjects.isEmpty()) item { EmptyMessage("Tu semestre empieza aquí", "Agrega una materia para organizar tus actividades.") }
+                    if (subjects.isEmpty()) item { EmptyMessage("Todavía no tienes materias registradas", "Agrega una materia para organizar tus actividades.") }
                     items(subjects, key = { it.id }) { subject ->
                         Card(Modifier.fillMaxWidth()) {
                             Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -106,17 +110,10 @@ fun PlannerApp(model: PlannerViewModel) {
                 }
             }
             composable("assignments") {
-                LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    item { Button(onClick = { nav.navigate(if (subjects.isEmpty()) "subject/0" else "assignment/0") }, modifier = Modifier.fillMaxWidth()) {
-                        Text(if (subjects.isEmpty()) "+ Crear primera materia" else "+ Nueva actividad")
-                    } }
-                    if (assignments.isEmpty()) item { EmptyMessage("Sin actividades todavía", "Registra una tarea, un proyecto o un examen. Primero necesitas una materia.") }
-                    items(assignments, key = { it.id }) { item ->
-                        ActivityCard(item, subjects.firstOrNull { it.id == item.subjectId }?.name ?: "Materia", busy,
-                            onEdit = { nav.navigate("assignment/${item.id}") }, onDelete = { deleteActivity = item },
-                            onComplete = { model.complete(item) })
-                    }
-                }
+                ActivitiesScreen(assignments, subjects, today, busy,
+                    onAdd = { nav.navigate(if (subjects.isEmpty()) "subject/0" else "assignment/0") },
+                    onEdit = { nav.navigate("assignment/${it.id}") },
+                    onDelete = { deleteActivity = it }, onComplete = model::complete)
             }
             composable("subject/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { backStack ->
                 val id = backStack.arguments?.getLong("id") ?: 0L
@@ -152,9 +149,81 @@ private fun EmptyMessage(title: String, description: String) {
 }
 
 @Composable
-private fun HomeScreen(assignments: List<Assignment>, subjects: List<Subject>, onAdd: () -> Unit, onEdit: (Assignment) -> Unit) {
+private fun SectionHeading(section: ActivitySection, count: Int) {
+    Text("${section.label} ($count)", style = MaterialTheme.typography.titleLarge,
+        modifier = Modifier.padding(top = 8.dp).semantics { heading() })
+}
+
+@Composable
+private fun ActivitiesScreen(
+    assignments: List<Assignment>, subjects: List<Subject>, today: Long, busy: Boolean,
+    onAdd: () -> Unit, onEdit: (Assignment) -> Unit,
+    onDelete: (Assignment) -> Unit, onComplete: (Assignment) -> Unit
+) {
+    // El destino conserva estos valores al editar y al cambiar entre pestañas.
+    // PlannerApp está asociado a key(userId), por lo que no se comparten entre cuentas.
+    var subjectId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var status by rememberSaveable { mutableStateOf<String?>(null) }
+    val filters = ActivityFilters(subjectId, status)
+    val groups = remember(assignments, today, filters) {
+        ActivityOrganization.group(assignments, today, filters)
+    }
+    val count = groups.values.sumOf { it.size }
+    LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item(key = "add") {
+            Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) {
+                Text(if (subjects.isEmpty()) "+ Crear primera materia" else "+ Nueva actividad")
+            }
+        }
+        item(key = "filters") {
+            OutlinedCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Filtrar actividades", style = MaterialTheme.typography.titleMedium)
+                    Choice("Materia", if (subjectId == null) "Todas las materias"
+                        else subjects.firstOrNull { it.id == subjectId }?.name ?: "Materia no disponible",
+                        listOf("Todas las materias") + subjects.map { it.name }) { index ->
+                        subjectId = if (index == 0) null else subjects[index - 1].id
+                    }
+                    Choice("Estado", status ?: "Todos los estados", listOf("Todos los estados") + Rules.statuses) { index ->
+                        status = if (index == 0) null else Rules.statuses[index - 1]
+                    }
+                    TextButton(onClick = { subjectId = null; status = null }, enabled = filters.isActive) {
+                        Text("Restablecer filtros")
+                    }
+                    Text("$count ${if (count == 1) "actividad" else "actividades"} · Fecha ↑, prioridad alta primero",
+                        style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+        if (count == 0) {
+            item(key = "empty") {
+                when {
+                    filters.isActive -> EmptyMessage("No se encontraron actividades con estos filtros",
+                        "Prueba otra materia o estado, o restablece los filtros.")
+                    subjects.isEmpty() -> EmptyMessage("Todavía no tienes materias registradas",
+                        "Crea una materia y después registra una tarea, un proyecto o un examen.")
+                    else -> EmptyMessage("Sin actividades todavía", "Registra una tarea, un proyecto o un examen.")
+                }
+            }
+        } else {
+            ActivitySection.entries.forEach { section ->
+                val sectionItems = groups.getValue(section)
+                item(key = section.name) { SectionHeading(section, sectionItems.size) }
+                if (sectionItems.isEmpty()) item { Text(section.emptyMessage) }
+                items(sectionItems, key = { it.id }) { item ->
+                    ActivityCard(item, subjects.firstOrNull { it.id == item.subjectId }?.name ?: "Materia",
+                        today, busy, onEdit = { onEdit(item) }, onDelete = { onDelete(item) },
+                        onComplete = { onComplete(item) })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeScreen(assignments: List<Assignment>, subjects: List<Subject>, today: Long, onAdd: () -> Unit, onEdit: (Assignment) -> Unit) {
     val pending = assignments.filter { it.status != "Completada" }
-    val today = LocalDate.now().toEpochDay()
+    val groups = ActivityOrganization.group(assignments, today)
     LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
             Text("Tu próximo paso, más claro", style = MaterialTheme.typography.headlineSmall)
@@ -164,18 +233,24 @@ private fun HomeScreen(assignments: List<Assignment>, subjects: List<Subject>, o
                 val overdueCount = pending.count { it.dueDate < today }
                 val completedCount = assignments.count { it.status == "Completada" }
                 Text("$overdueCount ${if (overdueCount == 1) "vencida" else "vencidas"} · $completedCount ${if (completedCount == 1) "completada" else "completadas"}")
+                Text("${groups.getValue(ActivitySection.TODAY).size} para hoy · ${assignments.count { it.status == "En progreso" }} en progreso")
+                Text("Pendientes incluye las actividades en progreso.", style = MaterialTheme.typography.bodySmall)
             } }
         }
         item { Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) { Text(if (subjects.isEmpty()) "Agregar mi primera materia" else "Agregar actividad") } }
-        item { Text("Pendientes por fecha", style = MaterialTheme.typography.titleLarge) }
-        if (pending.isEmpty()) item { EmptyMessage("No tienes entregas pendientes", "Tus próximas actividades aparecerán aquí.") }
-        items(pending.sortedBy { it.dueDate }.take(5), key = { it.id }) { item ->
-            Card(onClick = { onEdit(item) }, modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(item.title, fontWeight = FontWeight.Bold)
-                    Text(subjects.firstOrNull { it.id == item.subjectId }?.name ?: "Materia")
-                    Text("${dateLabel(item.dueDate)} · ${item.priority} · ${item.status}")
-                    if (item.dueDate < today) Text("Entrega vencida", color = MaterialTheme.colorScheme.error)
+        ActivitySection.entries.forEach { section ->
+            val sectionItems = groups.getValue(section)
+            item(key = section.name) { SectionHeading(section, sectionItems.size) }
+            if (sectionItems.isEmpty()) item { Text(section.emptyMessage) }
+            items(sectionItems, key = { it.id }) { item ->
+                Card(onClick = { onEdit(item) }, modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(item.title, fontWeight = FontWeight.Bold)
+                        Text(subjects.firstOrNull { it.id == item.subjectId }?.name ?: "Materia")
+                        Text("${item.type} · ${dateLabel(item.dueDate)}")
+                        Text("Prioridad ${item.priority.lowercase()} · ${item.status}")
+                        if (section == ActivitySection.OVERDUE) Text("Entrega vencida", color = MaterialTheme.colorScheme.error)
+                    }
                 }
             }
         }
@@ -183,15 +258,16 @@ private fun HomeScreen(assignments: List<Assignment>, subjects: List<Subject>, o
 }
 
 @Composable
-private fun ActivityCard(item: Assignment, subject: String, busy: Boolean, onEdit: () -> Unit, onDelete: () -> Unit, onComplete: () -> Unit) {
+private fun ActivityCard(item: Assignment, subject: String, today: Long, busy: Boolean, onEdit: () -> Unit, onDelete: () -> Unit, onComplete: () -> Unit) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(item.title, style = MaterialTheme.typography.titleMedium)
             Text(subject)
-            Text("${item.type} · ${dateLabel(item.dueDate)} · Prioridad ${item.priority.lowercase()}")
+            Text("${item.type} · Entrega: ${dateLabel(item.dueDate)}")
+            Text("Prioridad ${item.priority.lowercase()}", fontWeight = FontWeight.SemiBold)
             Text(item.status, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
             if (item.description.isNotBlank()) Text(item.description)
-            if (item.status != "Completada" && item.dueDate < LocalDate.now().toEpochDay()) Text("Entrega vencida", color = MaterialTheme.colorScheme.error)
+            if (ActivityOrganization.section(item, today) == ActivitySection.OVERDUE) Text("Entrega vencida", color = MaterialTheme.colorScheme.error)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 TextButton(onClick = onEdit, enabled = !busy) { Text("Editar") }
                 TextButton(onClick = onDelete, enabled = !busy) { Text("Eliminar") }
@@ -216,7 +292,7 @@ private fun SubjectForm(current: Subject?, busy: Boolean, onCancel: () -> Unit, 
                 Box(Modifier.size(16.dp).background(value, CircleShape))
             })
         }
-        Button(onClick = { attempted = true; if (Rules.subjectError(name) == null) onSave(Subject(current?.id ?: 0, name, color)) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Guardando…" else "Guardar") }
+        Button(onClick = { attempted = true; if (Rules.subjectError(name) == null) onSave(Subject(current?.id ?: 0, name, color)) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Guardando…" else "Guardar materia") }
         OutlinedButton(onClick = onCancel, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Cancelar") }
     }
 }
@@ -227,10 +303,12 @@ private fun Choice(label: String, value: String, options: List<String>, enabled:
     Column {
         Text(label, style = MaterialTheme.typography.labelLarge)
         Box {
-            OutlinedButton(onClick = { expanded = true }, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(onClick = { expanded = true }, enabled = enabled,
+                modifier = Modifier.fillMaxWidth().semantics { contentDescription = "$label: $value" }) {
                 Text(value, Modifier.weight(1f)); Icon(Icons.Default.ArrowDropDown, null)
             }
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false },
+                modifier = Modifier.heightIn(max = 320.dp).widthIn(max = 360.dp)) {
                 options.forEachIndexed { index, option -> DropdownMenuItem(text = { Text(option) }, onClick = { onSelect(index); expanded = false }) }
             }
         }
@@ -272,7 +350,7 @@ private fun ActivityForm(current: Assignment?, subjects: List<Subject>, busy: Bo
             if (Rules.activityError(title, subjectId, date) == null) {
                 onSave(Assignment(current?.id ?: 0, title, description, subjectId!!, type, Rules.parseDate(date)!!, priority, status))
             }
-        }, enabled = !busy && subjects.isNotEmpty(), modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Guardando…" else "Guardar") }
+        }, enabled = !busy && subjects.isNotEmpty(), modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Guardando…" else "Guardar actividad") }
         OutlinedButton(onClick = onCancel, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Cancelar") }
     }
 }
