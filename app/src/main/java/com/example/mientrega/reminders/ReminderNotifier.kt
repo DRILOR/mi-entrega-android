@@ -34,6 +34,14 @@ interface ReminderNotifier {
      * Cancela la notificación de una actividad concreta.
      */
     fun cancel(ownerId: Long, assignmentId: Long)
+
+    /**
+     * Cancela todas las notificaciones mostradas de una cuenta.
+     *
+     * Se usa al desactivar los recordatorios y al cerrar sesión, para que no
+     * queden avisos visibles de una cuenta inactiva.
+     */
+    fun cancelAllFor(ownerId: Long)
 }
 
 /**
@@ -87,6 +95,17 @@ class AndroidReminderNotifier(
             ReminderPolicy.notificationTag(ownerId, assignmentId),
             ReminderPolicy.notificationId(assignmentId)
         )
+    }
+
+    override fun cancelAllFor(ownerId: Long) {
+        val manager = appContext.getSystemService(NotificationManager::class.java) ?: return
+        val prefix = ReminderPolicy.notificationTagPrefix(ownerId)
+
+        // El sistema no permite cancelar por prefijo de tag, así que se
+        // consultan las notificaciones activas y se filtran por propietario.
+        manager.activeNotifications
+            .filter { it.tag?.startsWith(prefix) == true }
+            .forEach { manager.cancel(it.tag, it.id) }
     }
 
     private fun createChannelIfNeeded() {

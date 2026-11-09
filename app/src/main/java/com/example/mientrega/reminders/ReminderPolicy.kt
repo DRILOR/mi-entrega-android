@@ -60,11 +60,17 @@ object ReminderPolicy {
         "assignment-reminders-owner-$ownerId"
 
     /**
+     * Prefijo común de las notificaciones de una cuenta.
+     */
+    fun notificationTagPrefix(ownerId: Long): String =
+        "assignment-$ownerId-"
+
+    /**
      * Tag de la notificación. Junto con [notificationId] forma una identidad
      * única en Android, incluso si dos IDs numéricos llegaran a coincidir.
      */
     fun notificationTag(ownerId: Long, assignmentId: Long): String =
-        "assignment-$ownerId-$assignmentId"
+        "${notificationTagPrefix(ownerId)}$assignmentId"
 
     /**
      * ID numérico estable derivado del ID de la actividad.
