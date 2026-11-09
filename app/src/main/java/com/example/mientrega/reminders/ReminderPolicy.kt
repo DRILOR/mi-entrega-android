@@ -33,37 +33,58 @@ object ReminderPolicy {
     private val reminderTime: LocalTime = LocalTime.of(REMINDER_HOUR, REMINDER_MINUTE)
     private val fallbackDelay: Duration = Duration.ofMinutes(FALLBACK_DELAY_MINUTES)
 
+    /** Instante del aviso estándar: el día anterior a [dueDate] a las 08:00. */
+    fun standardReminderInstant(dueDate: Long, zoneId: ZoneId): Instant =
+        LocalDate.ofEpochDay(dueDate)
+            .minusDays(REMINDER_DAYS_BEFORE)
+            .atTime(reminderTime)
+            .atZone(zoneId)
+            .toInstant()
+
+    /**
+     * Indica si para [dueDate] ya pasó el aviso estándar pero la entrega sigue
+     * vigente, es decir, si corresponde usar el respaldo.
+     */
+    fun requiresFallback(dueDate: Long, clock: Clock, zoneId: ZoneId): Boolean {
+        val now = clock.instant()
+        val due = LocalDate.ofEpochDay(dueDate)
+        return !standardReminderInstant(dueDate, zoneId).isAfter(now) &&
+            !due.isBefore(now.atZone(zoneId).toLocalDate())
+    }
+
     /**
      * Devuelve el instante en el que debe sonar el recordatorio de una entrega.
      *
      * El aviso estándar es el día anterior a [dueDate] a las 08:00 en [zoneId].
      * Si ese instante ya pasó pero la entrega todavía no venció (es hoy o una
-     * fecha futura), devuelve un respaldo a [FALLBACK_DELAY_MINUTES] minutos
-     * desde [clock]. Así una actividad creada para hoy no se queda sin aviso.
+     * fecha futura), devuelve [fallbackTarget] cuando sigue siendo futuro; así
+     * las sincronizaciones sucesivas no desplazan el aviso. Si no hay un
+     * respaldo previo, calcula uno a [FALLBACK_DELAY_MINUTES] minutos desde
+     * [clock]. Una actividad creada para hoy no se queda sin aviso.
      *
      * Devuelve `null` solo cuando la fecha de entrega ya pasó por completo.
      *
      * @param dueDate día civil de entrega, tal como se guarda en `Assignment.dueDate`.
      * @param clock reloj inyectable para pruebas.
      * @param zoneId zona horaria del dispositivo.
+     * @param fallbackTarget respaldo previamente guardado para esta actividad.
      */
-    fun reminderInstant(dueDate: Long, clock: Clock, zoneId: ZoneId): Instant? {
+    fun reminderInstant(
+        dueDate: Long,
+        clock: Clock,
+        zoneId: ZoneId,
+        fallbackTarget: Instant? = null
+    ): Instant? {
         val now = clock.instant()
-        val due = LocalDate.ofEpochDay(dueDate)
-        val standardReminder = due
-            .minusDays(REMINDER_DAYS_BEFORE)
-            .atTime(reminderTime)
-            .atZone(zoneId)
-            .toInstant()
+        val standardReminder = standardReminderInstant(dueDate, zoneId)
 
         if (standardReminder.isAfter(now)) return standardReminder
 
         // El aviso estándar ya pasó (o coincide con ahora). Solo se ofrece un
         // respaldo si la entrega aún no ha vencido.
-        val today = now.atZone(zoneId).toLocalDate()
-        if (due.isBefore(today)) return null
+        if (!requiresFallback(dueDate, clock, zoneId)) return null
 
-        return now.plus(fallbackDelay)
+        return fallbackTarget?.takeIf { it.isAfter(now) } ?: now.plus(fallbackDelay)
     }
 
     /**

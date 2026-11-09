@@ -18,6 +18,21 @@ interface ReminderPreferences {
 
     /** Guarda la preferencia y actualiza el flujo observable por Compose. */
     fun setEnabled(enabled: Boolean)
+
+    /**
+     * Hora del respaldo ya acordada para una actividad, en milisegundos desde
+     * 1970, o `null` si todavía no se ha programado uno.
+     *
+     * Se conserva para que las sincronizaciones sucesivas no desplacen el
+     * aviso de las entregas de hoy.
+     */
+    fun fallbackTargetMillis(assignmentId: Long): Long?
+
+    /** Guarda la hora del respaldo de una actividad. */
+    fun setFallbackTargetMillis(assignmentId: Long, targetMillis: Long)
+
+    /** Elimina la hora del respaldo de una actividad. */
+    fun clearFallbackTarget(assignmentId: Long)
 }
 
 /**
@@ -51,6 +66,27 @@ class SharedPreferencesReminderPreferences(
         _enabled.value = enabled
     }
 
+    override fun fallbackTargetMillis(assignmentId: Long): Long? {
+        val key = fallbackTargetKey(assignmentId)
+        return if (preferences.contains(key)) {
+            preferences.getLong(key, 0L)
+        } else {
+            null
+        }
+    }
+
+    override fun setFallbackTargetMillis(assignmentId: Long, targetMillis: Long) {
+        preferences.edit()
+            .putLong(fallbackTargetKey(assignmentId), targetMillis)
+            .apply()
+    }
+
+    override fun clearFallbackTarget(assignmentId: Long) {
+        preferences.edit()
+            .remove(fallbackTargetKey(assignmentId))
+            .apply()
+    }
+
     companion object {
         /** Mismo dominio de preferencias que usa la app para ajustes locales. */
         const val PREFS_NAME = "mi-entrega-settings"
@@ -58,7 +94,14 @@ class SharedPreferencesReminderPreferences(
         /** Clave booleana del toggle de recordatorios. */
         const val KEY_ENABLED = "reminders_enabled"
 
+        /** Prefijo de la clave que guarda el respaldo de cada actividad. */
+        const val KEY_FALLBACK_PREFIX = "fallback_target_"
+
         /** Los recordatorios son opt-in. */
         const val DEFAULT_ENABLED = false
+
+        /** Clave de preferencias del respaldo de una actividad. */
+        fun fallbackTargetKey(assignmentId: Long): String =
+            "$KEY_FALLBACK_PREFIX$assignmentId"
     }
 }

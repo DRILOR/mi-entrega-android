@@ -69,7 +69,7 @@ class ReminderLifecycleTest {
 
         coordinator = ReminderCoordinator(
             assignments = DaoReminderAssignmentSource(dao),
-            scheduler = WorkManagerReminderScheduler(workManager, clock, ZONE),
+            scheduler = WorkManagerReminderScheduler(workManager, clock),
             preferences = preferences,
             notifier = notifier,
             clock = clock,
@@ -205,6 +205,41 @@ class ReminderLifecycleTest {
         assertEquals(expectedDelay(dueInDays(3)), active(infos).single().initialDelayMillis)
     }
 
+    /**
+     * Sincronizar dos veces la misma entrega de hoy no desplaza el respaldo:
+     * se reutiliza la hora guardada en preferencias y solo disminuye el
+     * retraso restante de WorkManager.
+     */
+    @Test
+    fun syncingTwiceKeepsTodayFallbackTargetStable() = runBlocking {
+        val owner = createOwner()
+        val assignmentId = createAssignment(owner, dueDate = dueInDays(0))
+        val name = workName(owner, assignmentId)
+
+        coordinator.sync(owner)
+        val firstDelay = awaitWork(name) { active(it).size == 1 }
+            .let { active(it).single().initialDelayMillis }
+        val storedTarget = requireNotNull(
+            preferences.fallbackTargetMillis(assignmentId)
+        ) { "El respaldo de hoy debe quedar guardado" }
+        assertEquals(
+            clock.instant().plus(Duration.ofMinutes(ReminderPolicy.FALLBACK_DELAY_MINUTES))
+                .toEpochMilli(),
+            storedTarget
+        )
+
+        clock.advance(Duration.ofMinutes(5))
+        coordinator.sync(owner)
+
+        val expectedRemaining = firstDelay - TimeUnit.MINUTES.toMillis(5)
+        val infos = awaitWork(name) {
+            active(it).size == 1 &&
+                active(it).single().initialDelayMillis == expectedRemaining
+        }
+        assertEquals(storedTarget, preferences.fallbackTargetMillis(assignmentId))
+        assertEquals(expectedRemaining, active(infos).single().initialDelayMillis)
+    }
+
     /** Desactivar el toggle cancela todos los trabajos de la cuenta. */
     @Test
     fun disablingRemindersCancelsEveryWorkOfTheOwner() = runBlocking {
@@ -290,9 +325,13 @@ class ReminderLifecycleTest {
         clock.instant().atZone(ZONE).toLocalDate().plusDays(days).toEpochDay()
 
     private class FixedClock(
-        private val current: Instant,
+        private var current: Instant,
         private val zone: ZoneId
     ) : Clock() {
+        fun advance(duration: Duration) {
+            current = current.plus(duration)
+        }
+
         override fun getZone(): ZoneId = zone
         override fun withZone(zone: ZoneId): Clock = FixedClock(current, zone)
         override fun instant(): Instant = current
@@ -300,11 +339,23 @@ class ReminderLifecycleTest {
 
     private class FakeReminderPreferences(enabled: Boolean) : ReminderPreferences {
         private val state = MutableStateFlow(enabled)
+        private val fallbackTargets = mutableMapOf<Long, Long>()
 
         override val enabled: StateFlow<Boolean> = state.asStateFlow()
 
         override fun setEnabled(enabled: Boolean) {
             state.value = enabled
+        }
+
+        override fun fallbackTargetMillis(assignmentId: Long): Long? =
+            fallbackTargets[assignmentId]
+
+        override fun setFallbackTargetMillis(assignmentId: Long, targetMillis: Long) {
+            fallbackTargets[assignmentId] = targetMillis
+        }
+
+        override fun clearFallbackTarget(assignmentId: Long) {
+            fallbackTargets.remove(assignmentId)
         }
     }
 

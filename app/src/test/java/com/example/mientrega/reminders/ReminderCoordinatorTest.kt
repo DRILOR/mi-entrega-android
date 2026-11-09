@@ -7,10 +7,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -128,6 +130,38 @@ class ReminderCoordinatorTest {
         assertEquals(listOf(1L), scheduler.scheduled.map { it.id })
         assertTrue(scheduler.cancelled.isEmpty())
         assertTrue(notifier.cancelled.isEmpty())
+        assertEquals(
+            clock.instant().plus(Duration.ofMinutes(ReminderPolicy.FALLBACK_DELAY_MINUTES)),
+            scheduler.scheduledInstants.single()
+        )
+        assertEquals(
+            scheduler.scheduledInstants.single().toEpochMilli(),
+            preferences.fallbackTargetMillis(1L)
+        )
+    }
+
+    @Test
+    fun syncTwiceKeepsTheSameFallbackTargetForToday() = runBlocking {
+        val mutableClock = MutableClock(clock.instant(), zone)
+        val mutableCoordinator = ReminderCoordinator(
+            assignments = source,
+            scheduler = scheduler,
+            preferences = preferences,
+            notifier = notifier,
+            clock = mutableClock,
+            zoneId = zone
+        )
+        source.pendingByOwner[OWNER] = listOf(assignment(id = 1L, dueDate = dueToday))
+
+        mutableCoordinator.sync(OWNER)
+        val firstTarget = scheduler.scheduledInstants.single()
+
+        mutableClock.advance(Duration.ofMinutes(5))
+        mutableCoordinator.sync(OWNER)
+
+        assertEquals(2, scheduler.scheduledInstants.size)
+        assertEquals(firstTarget, scheduler.scheduledInstants.last())
+        assertEquals(firstTarget.toEpochMilli(), preferences.fallbackTargetMillis(1L))
     }
 
     @Test
@@ -164,18 +198,24 @@ class ReminderCoordinatorTest {
 
     @Test
     fun onCompletedCancelsWorkAndShownNotification() = runBlocking {
+        preferences.setFallbackTargetMillis(1L, clock.instant().toEpochMilli())
+
         coordinator.onCompleted(ownerId = OWNER, assignmentId = 1L)
 
         assertEquals(listOf(OWNER to 1L), scheduler.cancelled)
         assertEquals(listOf(OWNER to 1L), notifier.cancelled)
+        assertNull(preferences.fallbackTargetMillis(1L))
     }
 
     @Test
     fun onDeletedCancelsWorkAndShownNotification() = runBlocking {
+        preferences.setFallbackTargetMillis(1L, clock.instant().toEpochMilli())
+
         coordinator.onDeleted(ownerId = OWNER, assignmentId = 1L)
 
         assertEquals(listOf(OWNER to 1L), scheduler.cancelled)
         assertEquals(listOf(OWNER to 1L), notifier.cancelled)
+        assertNull(preferences.fallbackTargetMillis(1L))
     }
 
     @Test
@@ -259,12 +299,14 @@ class ReminderCoordinatorTest {
 
     private class FakeScheduler : ReminderScheduler {
         val scheduled = mutableListOf<Assignment>()
+        val scheduledInstants = mutableListOf<Instant>()
         val cancelled = mutableListOf<Pair<Long, Long>>()
         val cancelledAllFor = mutableListOf<Long>()
         var cancelAllCalls = 0
 
-        override fun schedule(assignment: Assignment) {
+        override fun schedule(assignment: Assignment, reminderInstant: Instant) {
             scheduled += assignment
+            scheduledInstants += reminderInstant
         }
 
         override fun cancel(ownerId: Long, assignmentId: Long) {
@@ -282,12 +324,39 @@ class ReminderCoordinatorTest {
 
     private class FakePreferences(initial: Boolean) : ReminderPreferences {
         private val state = MutableStateFlow(initial)
+        private val fallbackTargets = mutableMapOf<Long, Long>()
 
         override val enabled: StateFlow<Boolean> = state.asStateFlow()
 
         override fun setEnabled(enabled: Boolean) {
             state.value = enabled
         }
+
+        override fun fallbackTargetMillis(assignmentId: Long): Long? =
+            fallbackTargets[assignmentId]
+
+        override fun setFallbackTargetMillis(assignmentId: Long, targetMillis: Long) {
+            fallbackTargets[assignmentId] = targetMillis
+        }
+
+        override fun clearFallbackTarget(assignmentId: Long) {
+            fallbackTargets.remove(assignmentId)
+        }
+    }
+
+    private class MutableClock(
+        private var current: Instant,
+        private val zone: ZoneId
+    ) : Clock() {
+        fun advance(duration: Duration) {
+            current = current.plus(duration)
+        }
+
+        override fun getZone(): ZoneId = zone
+
+        override fun withZone(zone: ZoneId): Clock = MutableClock(current, zone)
+
+        override fun instant(): Instant = current
     }
 
     private class FakeNotifier : ReminderNotifier {

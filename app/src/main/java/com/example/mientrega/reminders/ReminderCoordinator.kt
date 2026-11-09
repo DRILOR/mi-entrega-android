@@ -6,6 +6,7 @@ import com.example.mientrega.data.Assignment
 import com.example.mientrega.data.PlannerDao
 import kotlinx.coroutines.flow.StateFlow
 import java.time.Clock
+import java.time.Instant
 import java.time.ZoneId
 
 /**
@@ -111,10 +112,16 @@ class ReminderCoordinator(
         val pending = assignments.pending(ownerId, fromDay)
             .filter { it.ownerId == ownerId }
             .filter { it.status != COMPLETED_STATUS }
-            .filter { ReminderPolicy.reminderInstant(it.dueDate, clock, zoneId) != null }
+            .mapNotNull { assignment ->
+                resolveReminder(assignment)?.let { reminder ->
+                    assignment to reminder
+                }
+            }
 
         scheduler.cancelAllFor(ownerId)
-        pending.forEach(scheduler::schedule)
+        pending.forEach { (assignment, reminder) ->
+            scheduler.schedule(assignment, reminder)
+        }
     }
 
     /**
@@ -132,14 +139,15 @@ class ReminderCoordinator(
         val eligible = assignment != null &&
             assignment.ownerId == ownerId &&
             assignment.status != COMPLETED_STATUS &&
-            preferences.enabled.value &&
-            ReminderPolicy.reminderInstant(assignment.dueDate, clock, zoneId) != null
+            preferences.enabled.value
 
-        if (eligible) {
-            scheduler.schedule(assignment!!)
+        val reminder = if (eligible) resolveReminder(assignment!!) else null
+        if (assignment != null && reminder != null) {
+            scheduler.schedule(assignment, reminder)
         } else {
             scheduler.cancel(ownerId, assignmentId)
             notifier.cancel(ownerId, assignmentId)
+            preferences.clearFallbackTarget(assignmentId)
         }
     }
 
@@ -194,10 +202,47 @@ class ReminderCoordinator(
         notifier.cancelAllFor(ownerId)
     }
 
+    /**
+     * Calcula el aviso de una actividad y conserva el respaldo acordado.
+     *
+     * Si el aviso estándar ya pasó y la entrega sigue vigente, reutiliza la
+     * hora previamente guardada para que un nuevo `sync()` (por ejemplo, al
+     * volver a primer plano) no desplace el recordatorio otros 10 minutos.
+     */
+    private fun resolveReminder(assignment: Assignment): Instant? {
+        val now = clock.instant()
+        val storedTarget = preferences.fallbackTargetMillis(assignment.id)
+            ?.let(Instant::ofEpochMilli)
+
+        val reminder = ReminderPolicy.reminderInstant(
+            assignment.dueDate,
+            clock,
+            zoneId,
+            storedTarget
+        )
+        if (reminder == null) {
+            if (storedTarget != null) preferences.clearFallbackTarget(assignment.id)
+            return null
+        }
+
+        if (ReminderPolicy.requiresFallback(assignment.dueDate, clock, zoneId)) {
+            if (storedTarget == null || !storedTarget.isAfter(now)) {
+                preferences.setFallbackTargetMillis(assignment.id, reminder.toEpochMilli())
+            }
+        } else if (storedTarget != null) {
+            // El aviso estándar sigue siendo futuro: cualquier respaldo previo
+            // quedó obsoleto.
+            preferences.clearFallbackTarget(assignment.id)
+        }
+
+        return reminder
+    }
+
     private fun cancelReminder(ownerId: Long, assignmentId: Long) {
         if (ownerId <= 0L || assignmentId <= 0L) return
         scheduler.cancel(ownerId, assignmentId)
         notifier.cancel(ownerId, assignmentId)
+        preferences.clearFallbackTarget(assignmentId)
     }
 
     companion object {
@@ -219,8 +264,7 @@ class ReminderCoordinator(
                 assignments = DaoReminderAssignmentSource(ReminderDependencies.dao),
                 scheduler = WorkManagerReminderScheduler(
                     WorkManager.getInstance(appContext),
-                    clock,
-                    zoneId
+                    clock
                 ),
                 preferences = ReminderDependencies.preferences,
                 notifier = ReminderDependencies.notifier,

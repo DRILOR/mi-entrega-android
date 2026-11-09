@@ -82,6 +82,8 @@ En Android 13+ se solicita `POST_NOTIFICATIONS` en tiempo de ejecución. Si el u
 
 El aviso estándar es el día anterior a las 08:00. Si ese instante ya pasó, pero la actividad vence hoy o en una fecha futura, `ReminderPolicy` devuelve un respaldo a 10 minutos desde el reloj actual. Así una actividad creada para hoy no se queda sin recordatorio. Si la fecha de entrega ya pasó por completo, devuelve `null` y no se programa nada.
 
+La hora del respaldo se guarda en las preferencias con la clave `fallback_target_<assignmentId>`. Antes de calcular un respaldo nuevo, el coordinador reutiliza el valor guardado si todavía es futuro. Sin esto, cada `sync()` en `ON_RESUME` volvería a calcular `now + 10 min` y la notificación nunca llegaría. Al completar o eliminar la actividad se borra esa clave para no dejar datos obsoletos. El coordinador calcula el instante y se lo entrega al scheduler, de modo que WorkManager no vuelve a interpretar la política por su cuenta.
+
 ### Programación best-effort y ciclo de vida
 
 Guardar una actividad en Room es la operación principal. La programación del recordatorio se ejecuta después y se envuelve en `reminderSafely`: si WorkManager falla, el error se registra en Logcat pero no se muestra al usuario ni se pierde el guardado.
@@ -94,4 +96,4 @@ Los avisos se resincronizan al volver a primer plano y cuando cambian la fecha, 
 - Pruebas instrumentadas con Room en memoria, notificador falso y WorkManager de prueba.
 - Pruebas del ciclo de vida completo: crear, editar, completar, eliminar, no duplicados y desactivar.
 - Pruebas del Worker, del DAO, del notificador real y de las preferencias.
-- Resultado de cierre: **56 pruebas unitarias y 23 instrumentadas en verde**.
+- Resultado de cierre: **59 pruebas unitarias y 27 instrumentadas en verde**.

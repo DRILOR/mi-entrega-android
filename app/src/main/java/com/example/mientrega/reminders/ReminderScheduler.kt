@@ -8,7 +8,7 @@ import androidx.work.workDataOf
 import com.example.mientrega.data.Assignment
 import java.time.Clock
 import java.time.Duration
-import java.time.ZoneId
+import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 /**
@@ -18,8 +18,13 @@ import java.util.concurrent.TimeUnit
  * (por ejemplo, AlarmManager) sin cambiar el ViewModel ni el coordinador.
  */
 interface ReminderScheduler {
-    /** Programa o reemplaza el recordatorio de una actividad. */
-    fun schedule(assignment: Assignment)
+    /**
+     * Programa o reemplaza el recordatorio de una actividad.
+     *
+     * [reminderInstant] lo calcula el coordinador para que el respaldo de las
+     * entregas de hoy use siempre la misma hora acordada.
+     */
+    fun schedule(assignment: Assignment, reminderInstant: Instant)
 
     /** Cancela el recordatorio de una actividad concreta. */
     fun cancel(ownerId: Long, assignmentId: Long)
@@ -38,33 +43,26 @@ interface ReminderScheduler {
  * [ReminderPolicy.workName]. Al editar una actividad se usa REPLACE para que
  * no queden dos avisos programados para la misma entrega.
  *
- * [clock] y [zoneId] se inyectan para poder probar los cálculos de fecha sin
- * depender del reloj real del dispositivo.
+ * [clock] se inyecta para poder probar el retraso sin depender del reloj real
+ * del dispositivo.
  */
 class WorkManagerReminderScheduler(
     private val workManager: WorkManager,
-    private val clock: Clock = Clock.systemDefaultZone(),
-    private val zoneId: ZoneId = ZoneId.systemDefault()
+    private val clock: Clock = Clock.systemDefaultZone()
 ) : ReminderScheduler {
 
     constructor(context: Context) : this(WorkManager.getInstance(context.applicationContext))
 
-    override fun schedule(assignment: Assignment) {
+    override fun schedule(assignment: Assignment, reminderInstant: Instant) {
         val ownerId = assignment.ownerId ?: return
         val workName = ReminderPolicy.workName(ownerId, assignment.id)
 
-        val reminder = if (assignment.status == COMPLETED_STATUS) {
-            null
-        } else {
-            ReminderPolicy.reminderInstant(assignment.dueDate, clock, zoneId)
-        }
-
-        if (reminder == null) {
+        if (assignment.status == COMPLETED_STATUS) {
             workManager.cancelUniqueWork(workName)
             return
         }
 
-        val delayMillis = Duration.between(clock.instant(), reminder)
+        val delayMillis = Duration.between(clock.instant(), reminderInstant)
             .toMillis()
             .coerceAtLeast(0L)
 

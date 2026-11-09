@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -62,5 +64,41 @@ class ReminderPreferencesTest {
         assertFalse(preferences.enabled.value)
         val recreated = SharedPreferencesReminderPreferences(context, preferencesName)
         assertFalse(recreated.enabled.value)
+    }
+
+    @Test
+    fun fallbackTargetIsNullByDefault() {
+        val preferences = SharedPreferencesReminderPreferences(context, preferencesName)
+
+        assertNull(preferences.fallbackTargetMillis(42L))
+    }
+
+    @Test
+    fun fallbackTargetPersistsWithTheDocumentedKey() {
+        val preferences = SharedPreferencesReminderPreferences(context, preferencesName)
+        val target = 1_800_000_000_000L
+
+        preferences.setFallbackTargetMillis(42L, target)
+
+        assertEquals(target, preferences.fallbackTargetMillis(42L))
+        assertEquals(
+            target,
+            context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
+                .getLong("fallback_target_42", 0L)
+        )
+        val recreated = SharedPreferencesReminderPreferences(context, preferencesName)
+        assertEquals(target, recreated.fallbackTargetMillis(42L))
+    }
+
+    @Test
+    fun clearingFallbackTargetRemovesOnlyThatAssignment() {
+        val preferences = SharedPreferencesReminderPreferences(context, preferencesName)
+        preferences.setFallbackTargetMillis(42L, 1_000L)
+        preferences.setFallbackTargetMillis(43L, 2_000L)
+
+        preferences.clearFallbackTarget(42L)
+
+        assertNull(preferences.fallbackTargetMillis(42L))
+        assertEquals(2_000L, preferences.fallbackTargetMillis(43L))
     }
 }

@@ -68,6 +68,38 @@ class ReminderPolicyTest {
     }
 
     @Test
+    fun savedFallbackIsReusedWhenItIsStillInTheFuture() {
+        val now = Instant.parse("2026-11-18T12:00:00Z")
+        val savedFallback = now.plus(Duration.ofMinutes(3))
+        val today = LocalDate.of(2026, 11, 18).toEpochDay()
+
+        val result = ReminderPolicy.reminderInstant(
+            today,
+            Clock.fixed(now, zone),
+            zone,
+            savedFallback
+        )
+
+        assertEquals(savedFallback, result)
+    }
+
+    @Test
+    fun expiredFallbackIsRecalculated() {
+        val now = Instant.parse("2026-11-18T12:00:00Z")
+        val expiredFallback = now.minus(Duration.ofMinutes(1))
+        val today = LocalDate.of(2026, 11, 18).toEpochDay()
+
+        val result = ReminderPolicy.reminderInstant(
+            today,
+            Clock.fixed(now, zone),
+            zone,
+            expiredFallback
+        )
+
+        assertEquals(now.plus(fallbackDelay), result)
+    }
+
+    @Test
     fun pastDueDateReturnsNull() {
         val pastDueDate = LocalDate.of(2026, 11, 10).toEpochDay()
         val clock = Clock.fixed(Instant.parse("2026-11-15T12:00:00Z"), zone)
