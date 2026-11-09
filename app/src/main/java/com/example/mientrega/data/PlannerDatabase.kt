@@ -78,6 +78,15 @@ interface PlannerDao {
     @Query("SELECT * FROM assignments WHERE ownerId = :userId ORDER BY dueDate, id")
     fun assignments(userId: Long): Flow<List<Assignment>>
 
+    @Query("SELECT * FROM assignments WHERE id = :id AND ownerId = :ownerId LIMIT 1")
+    suspend fun assignmentById(id: Long, ownerId: Long): Assignment?
+
+    @Query("SELECT * FROM assignments WHERE ownerId = :ownerId AND status != 'Completada' AND dueDate >= :fromDay ORDER BY dueDate, id")
+    suspend fun pendingForReminders(ownerId: Long, fromDay: Long): List<Assignment>
+
+    @Query("SELECT name FROM subjects WHERE id = :subjectId AND ownerId = :ownerId LIMIT 1")
+    suspend fun subjectName(subjectId: Long, ownerId: Long): String?
+
     @Query("SELECT COUNT(*) FROM subjects WHERE id = :subjectId AND ownerId = :userId")
     suspend fun ownsSubject(subjectId: Long, userId: Long): Int
 
