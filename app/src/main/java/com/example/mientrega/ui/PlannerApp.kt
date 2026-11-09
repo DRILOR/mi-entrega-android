@@ -67,6 +67,7 @@ fun PlannerApp(model: PlannerViewModel) {
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route ?: "home"
     val mainScreen = route in listOf("home", "subjects", "assignments")
+    val isSettings = route == "settings"
     val snackbar = remember { SnackbarHostState() }
     var deleteSubject by remember { mutableStateOf<Subject?>(null) }
     var deleteActivity by remember { mutableStateOf<Assignment?>(null) }
@@ -76,16 +77,26 @@ fun PlannerApp(model: PlannerViewModel) {
         "assignments" -> "Actividades"
         "subject/{id}" -> if ((entry?.arguments?.getLong("id") ?: 0L) == 0L) "Nueva materia" else "Editar materia"
         "assignment/{id}" -> if ((entry?.arguments?.getLong("id") ?: 0L) == 0L) "Nueva actividad" else "Editar actividad"
+        "settings" -> "Ajustes"
         else -> "Mi Entrega"
     }
     Scaffold(
-        topBar = { TopAppBar(title = { Text(title, fontWeight = FontWeight.Bold) }, navigationIcon = {
-            if (!mainScreen) IconButton(onClick = { nav.popBackStack() }, enabled = !busy) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver sin guardar")
+        topBar = {
+            if (!isSettings) {
+                TopAppBar(title = { Text(title, fontWeight = FontWeight.Bold) }, navigationIcon = {
+                    if (!mainScreen) IconButton(onClick = { nav.popBackStack() }, enabled = !busy) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver sin guardar")
+                    }
+                }, actions = {
+                    if (route == "home") {
+                        IconButton(onClick = { nav.navigate("settings") { launchSingleTop = true } }) {
+                            Icon(Icons.Default.Settings, contentDescription = "Ajustes")
+                        }
+                    }
+                    TextButton(onClick = model::logout, enabled = !busy) { Text("Salir") }
+                })
             }
-        }, actions = {
-            TextButton(onClick = model::logout, enabled = !busy) { Text("Salir") }
-        }) },
+        },
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
             if (mainScreen) NavigationBar {
@@ -98,6 +109,12 @@ fun PlannerApp(model: PlannerViewModel) {
                     }, icon = { Icon(icons[index], contentDescription = null) }, label = { Text(labels[index]) })
                 }
             }
+        },
+        // La pantalla de ajustes dibuja su propio Scaffold y gestiona sus insets.
+        contentWindowInsets = if (isSettings) {
+            WindowInsets(0, 0, 0, 0)
+        } else {
+            ScaffoldDefaults.contentWindowInsets
         }
     ) { padding ->
         NavHost(navController = nav, startDestination = "home", modifier = Modifier.padding(padding)) {
@@ -139,6 +156,9 @@ fun PlannerApp(model: PlannerViewModel) {
                 val current = assignments.firstOrNull { it.id == id }
                 if (id != 0L && current == null) LoadingRecord() else ActivityForm(current, subjects, busy,
                     onCancel = { nav.popBackStack() }, onSave = { model.saveAssignment(it) { nav.popBackStack() } })
+            }
+            composable("settings") {
+                SettingsScreen(model = model, onBack = { nav.popBackStack() })
             }
         }
     }
