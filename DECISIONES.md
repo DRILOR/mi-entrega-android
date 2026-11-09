@@ -46,7 +46,7 @@ Se eligió **WorkManager** para programar los avisos porque:
 - no requiere el permiso de alarmas exactas que Android 12+ exige a `AlarmManager`;
 - ofrece trabajos únicos por nombre, etiquetas y estado observable;
 - se puede probar de forma instrumentada con `WorkManagerTestInitHelper`;
-- el aviso es a las 20:00 y no necesita precisión al segundo, por lo que la ventana de ejecución de WorkManager es aceptable.
+- el aviso estándar es a las 08:00 y no necesita precisión al segundo, por lo que la ventana de ejecución de WorkManager es aceptable.
 
 Con `AlarmManager` habría que gestionar manualmente `BOOT_COMPLETED`, reprogramaciones, permisos y cancelaciones. Para no acoplar el resto de la app, la interfaz `ReminderScheduler` aísla la implementación y permitiría sustituirla por `AlarmManager` si en el futuro se exigiera precisión exacta.
 
@@ -78,6 +78,10 @@ El toggle global está **apagado por defecto**. El usuario debe activarlo en Aju
 
 En Android 13+ se solicita `POST_NOTIFICATIONS` en tiempo de ejecución. Si el usuario deniega permanentemente, la app no insiste con el diálogo y ofrece abrir los ajustes del sistema. En versiones anteriores se comprueba si las notificaciones de la app están habilitadas en el sistema.
 
+### Entregas para hoy: recordatorio de respaldo
+
+El aviso estándar es el día anterior a las 08:00. Si ese instante ya pasó, pero la actividad vence hoy o en una fecha futura, `ReminderPolicy` devuelve un respaldo a 10 minutos desde el reloj actual. Así una actividad creada para hoy no se queda sin recordatorio. Si la fecha de entrega ya pasó por completo, devuelve `null` y no se programa nada.
+
 ### Programación best-effort y ciclo de vida
 
 Guardar una actividad en Room es la operación principal. La programación del recordatorio se ejecuta después y se envuelve en `reminderSafely`: si WorkManager falla, el error se registra en Logcat pero no se muestra al usuario ni se pierde el guardado.
@@ -90,4 +94,4 @@ Los avisos se resincronizan al volver a primer plano y cuando cambian la fecha, 
 - Pruebas instrumentadas con Room en memoria, notificador falso y WorkManager de prueba.
 - Pruebas del ciclo de vida completo: crear, editar, completar, eliminar, no duplicados y desactivar.
 - Pruebas del Worker, del DAO, del notificador real y de las preferencias.
-- Resultado de cierre: **51 pruebas unitarias y 23 instrumentadas en verde**.
+- Resultado de cierre: **56 pruebas unitarias y 23 instrumentadas en verde**.

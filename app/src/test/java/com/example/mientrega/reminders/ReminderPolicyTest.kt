@@ -6,6 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -16,15 +17,54 @@ class ReminderPolicyTest {
     private val zone: ZoneId = ZoneId.of("America/La_Paz")
     private val dueDate: Long = LocalDate.of(2026, 11, 20).toEpochDay()
     private val expectedReminder: Instant =
-        ZonedDateTime.of(2026, 11, 19, 20, 0, 0, 0, zone).toInstant()
+        ZonedDateTime.of(2026, 11, 19, 8, 0, 0, 0, zone).toInstant()
+    private val fallbackDelay: Duration =
+        Duration.ofMinutes(ReminderPolicy.FALLBACK_DELAY_MINUTES)
 
     @Test
-    fun futureDueDateReturnsReminderOneDayBeforeAtEightPm() {
+    fun reminderHourIsEightAm() {
+        assertEquals(8, ReminderPolicy.REMINDER_HOUR)
+    }
+
+    @Test
+    fun futureDueDateReturnsReminderOneDayBeforeAtEightAm() {
         val clock = Clock.fixed(Instant.parse("2026-11-18T12:00:00Z"), zone)
 
         val result = ReminderPolicy.reminderInstant(dueDate, clock, zone)
 
         assertEquals(expectedReminder, result)
+    }
+
+    @Test
+    fun dueDateTodayReturnsFallbackTenMinutesFromNow() {
+        val now = Instant.parse("2026-11-18T12:00:00Z")
+        val today = LocalDate.of(2026, 11, 18).toEpochDay()
+        val clock = Clock.fixed(now, zone)
+
+        val result = ReminderPolicy.reminderInstant(today, clock, zone)
+
+        assertEquals(now.plus(fallbackDelay), result)
+    }
+
+    @Test
+    fun dueDateTodayReturnsFallbackEvenAfterTheStandardReminderTime() {
+        val now = Instant.parse("2026-11-18T23:30:00Z")
+        val today = LocalDate.of(2026, 11, 18).toEpochDay()
+        val clock = Clock.fixed(now, zone)
+
+        val result = ReminderPolicy.reminderInstant(today, clock, zone)
+
+        assertEquals(now.plus(fallbackDelay), result)
+    }
+
+    @Test
+    fun standardReminderAlreadyPassedButDueDateIsFutureReturnsFallback() {
+        val now = expectedReminder.plusNanos(1)
+        val clock = Clock.fixed(now, zone)
+
+        val result = ReminderPolicy.reminderInstant(dueDate, clock, zone)
+
+        assertEquals(now.plus(fallbackDelay), result)
     }
 
     @Test
@@ -38,12 +78,23 @@ class ReminderPolicyTest {
     }
 
     @Test
-    fun clockExactlyAtReminderTimeReturnsNull() {
+    fun dueDateYesterdayReturnsNull() {
+        val now = Instant.parse("2026-11-18T12:00:00Z")
+        val yesterday = LocalDate.of(2026, 11, 17).toEpochDay()
+        val clock = Clock.fixed(now, zone)
+
+        val result = ReminderPolicy.reminderInstant(yesterday, clock, zone)
+
+        assertNull(result)
+    }
+
+    @Test
+    fun clockExactlyAtReminderTimeReturnsFallback() {
         val clock = Clock.fixed(expectedReminder, zone)
 
         val result = ReminderPolicy.reminderInstant(dueDate, clock, zone)
 
-        assertNull(result)
+        assertEquals(expectedReminder.plus(fallbackDelay), result)
     }
 
     @Test
@@ -53,15 +104,6 @@ class ReminderPolicyTest {
         val result = ReminderPolicy.reminderInstant(dueDate, clock, zone)
 
         assertEquals(expectedReminder, result)
-    }
-
-    @Test
-    fun clockJustAfterReminderTimeReturnsNull() {
-        val clock = Clock.fixed(expectedReminder.plusNanos(1), zone)
-
-        val result = ReminderPolicy.reminderInstant(dueDate, clock, zone)
-
-        assertNull(result)
     }
 
     @Test

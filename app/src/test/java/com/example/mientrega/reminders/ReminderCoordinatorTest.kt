@@ -52,12 +52,14 @@ class ReminderCoordinatorTest {
             assignment(id = 1L, dueDate = futureDue),
             assignment(id = 2L, dueDate = futureDue, status = COMPLETED),
             assignment(id = 3L, owner = OTHER_OWNER, dueDate = futureDue),
-            assignment(id = 4L, dueDate = dueToday)
+            assignment(id = 4L, dueDate = dueToday),
+            assignment(id = 5L, dueDate = yesterday)
         )
 
         coordinator.sync(OWNER)
 
-        assertEquals(listOf(1L), scheduler.scheduled.map { it.id })
+        // La actividad de hoy recibe el respaldo; la de ayer ya no es elegible.
+        assertEquals(listOf(1L, 4L), scheduler.scheduled.map { it.id })
         assertEquals(listOf(OWNER), scheduler.cancelledAllFor)
         assertTrue(notifier.cancelledAllFor.isEmpty())
         // Se consultan pendientes desde ayer, tal como pide el plan.
@@ -118,8 +120,19 @@ class ReminderCoordinatorTest {
     }
 
     @Test
-    fun onAssignmentSavedCancelsWhenReminderInstantAlreadyPassed() = runBlocking {
+    fun onAssignmentSavedSchedulesFallbackWhenDueDateIsToday() = runBlocking {
         source.byId[1L to OWNER] = assignment(id = 1L, dueDate = dueToday)
+
+        coordinator.onAssignmentSaved(assignmentId = 1L, ownerId = OWNER)
+
+        assertEquals(listOf(1L), scheduler.scheduled.map { it.id })
+        assertTrue(scheduler.cancelled.isEmpty())
+        assertTrue(notifier.cancelled.isEmpty())
+    }
+
+    @Test
+    fun onAssignmentSavedCancelsWhenDueDateAlreadyPassed() = runBlocking {
+        source.byId[1L to OWNER] = assignment(id = 1L, dueDate = yesterday)
 
         coordinator.onAssignmentSaved(assignmentId = 1L, ownerId = OWNER)
 

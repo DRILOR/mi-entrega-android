@@ -4,7 +4,7 @@
 **Rama de la Etapa 3:** `etapa3/integrante3-recordatorios`  
 **Responsable de la Etapa 1:** Dailer Almanza  
 **Responsable de la Etapa 3:** Integrante 3  
-**Estado:** Etapa 3 implementada y verificada; 51 pruebas unitarias y 23 instrumentadas en verde.
+**Estado:** Etapa 3 implementada y verificada; 56 pruebas unitarias y 23 instrumentadas en verde.
 
 ## Base anterior (commit 93ae4ba)
 
@@ -77,7 +77,7 @@ Las cuentas y los datos están almacenados en este dispositivo. No existe sincro
 ### Funcionalidad entregada
 
 - Recordatorios de entregas con **WorkManager**, un trabajo único por actividad.
-- Política de aviso: **el día anterior a la entrega a las 20:00 hora local**. La fecha de entrega sigue guardándose como `dueDate` en `epochDay`.
+- Política de aviso: **el día anterior a la entrega a las 08:00 hora local**. Si el aviso estándar ya pasó pero la entrega es hoy o futura, se programa un respaldo **10 minutos** después de guardar. La fecha de entrega sigue guardándose como `dueDate` en `epochDay`.
 - Toggle global **“Activar recordatorios”** en la pantalla de Ajustes. Está apagado por defecto (opt-in) y se persiste en preferencias privadas.
 - Solicitud y gestión de `POST_NOTIFICATIONS` en Android 13+:
   - botón para pedir el permiso,
@@ -106,7 +106,7 @@ Las cuentas y los datos están almacenados en este dispositivo. No existe sincro
 
 | Prueba | Resultado |
 | --- | --- |
-| `gradlew.bat testDebugUnitTest` | **51 pruebas, 0 fallos** |
+| `gradlew.bat testDebugUnitTest` | **56 pruebas, 0 fallos** |
 | `gradlew.bat connectedDebugAndroidTest` | **23 pruebas, 0 fallos** |
 | `gradlew.bat compileDebugKotlin` | `BUILD SUCCESSFUL` |
 | `gradlew.bat compileDebugAndroidTestKotlin` | `BUILD SUCCESSFUL` |
@@ -124,7 +124,7 @@ Las 23 pruebas instrumentadas incluyen 6 nuevas de `ReminderLifecycleTest`:
 - guardar tres veces la misma actividad no genera duplicados,
 - apagar el toggle cancela todos los trabajos de la cuenta.
 
-También se conservan las pruebas del Worker, del DAO, del notificador y de las preferencias.
+También se conservan las pruebas del Worker, del DAO, del notificador y de las preferencias. `ReminderPolicyTest` cubre el aviso estándar a las 08:00, el respaldo de 10 minutos para entregas de hoy o futuras y el caso sin recordatorio cuando la fecha ya pasó.
 
 ### APK de evidencia
 

@@ -137,9 +137,11 @@ fun SettingsScreen(model: PlannerViewModel, onBack: () -> Unit) {
                         style = MaterialTheme.typography.titleLarge
                     )
                     Text(
-                        "Recibe un aviso el día anterior a la entrega, a las 20:00 " +
-                            "hora local del dispositivo. Los avisos se programan solo " +
-                            "para actividades pendientes de tu cuenta.",
+                        "Recibe un aviso el día anterior a la entrega, a las 08:00 " +
+                            "hora local del dispositivo. Si la entrega es para hoy, " +
+                            "el aviso se programa unos minutos después de guardarla. " +
+                            "Los avisos se programan solo para actividades pendientes " +
+                            "de tu cuenta.",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
