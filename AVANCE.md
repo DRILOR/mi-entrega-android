@@ -1,9 +1,10 @@
 # Avance de Mi Entrega
 
-**Actualizado:** 5 de noviembre de 2026  
-**Rama en validación:** `etapa1/dailer-usuarios`  
-**Responsable:** Dailer Almanza  
-**Estado:** funciones principales de usuarios verificadas; cierre técnico pendiente. La rama `main` sigue estable y sin fusionar.
+**Actualizado:** 9 de noviembre de 2026  
+**Rama de la Etapa 3:** `etapa3/integrante3-recordatorios`  
+**Responsable de la Etapa 1:** Dailer Almanza  
+**Responsable de la Etapa 3:** Integrante 3  
+**Estado:** Etapa 3 implementada y verificada; 51 pruebas unitarias y 23 instrumentadas en verde.
 
 ## Base anterior (commit 93ae4ba)
 
@@ -60,9 +61,87 @@ Ver `ETAPA1_USUARIOS_PRUEBAS.md` para el registro detallado.
 ## Trabajo posterior del equipo
 
 - **Integrante 2:** filtros, sección Para hoy, ordenamiento y mejoras de interfaz.
-- **Integrante 3:** recordatorios, notificaciones, pruebas finales, APK y documentación final.
+- **Integrante 3:** ✅ recordatorios, notificaciones, pruebas finales, APK y documentación final (ver sección de la Etapa 3).
 - **Los tres:** explicación y demostración de los módulos propios durante la defensa.
 
 ## Limitaciones y futuro
 
 Las cuentas y los datos están almacenados en este dispositivo. No existe sincronización entre teléfonos ni servidor, y la contraseña local no cifra el archivo de Room. La propuesta de una posible migración está en `PLAN_MIGRACION_ONLINE.md`.
+
+---
+
+## Etapa 3: recordatorios (Integrante 3)
+
+**Estado:** implementada, probada y lista para demostración.
+
+### Funcionalidad entregada
+
+- Recordatorios de entregas con **WorkManager**, un trabajo único por actividad.
+- Política de aviso: **el día anterior a la entrega a las 20:00 hora local**. La fecha de entrega sigue guardándose como `dueDate` en `epochDay`.
+- Toggle global **“Activar recordatorios”** en la pantalla de Ajustes. Está apagado por defecto (opt-in) y se persiste en preferencias privadas.
+- Solicitud y gestión de `POST_NOTIFICATIONS` en Android 13+:
+  - botón para pedir el permiso,
+  - aviso de “Notificaciones bloqueadas”,
+  - acceso a los ajustes del sistema cuando la denegación es permanente.
+- Un canal de notificaciones propio y notificaciones con **tag e ID estables** para evitar duplicados.
+- Cancelación de recordatorios al completar, eliminar o desactivar una actividad, al apagar el toggle y al cerrar sesión.
+- Resincronización al volver a primer plano (`ON_RESUME`) y cuando cambian la fecha, la hora, la zona horaria o se alcanza la medianoche.
+- El Worker relee la actividad desde Room y valida propietario, sesión activa, estado, fecha y materia antes de notificar.
+- La programación es **best-effort**: un fallo de WorkManager no impide guardar la actividad en Room.
+- Room permanece en **versión 2**; no se agregaron tablas ni columnas.
+
+### Archivos principales
+
+- `reminders/ReminderPolicy.kt`: cálculo del instante del aviso, nombres, tags e IDs.
+- `reminders/ReminderScheduler.kt`: programación y cancelación con WorkManager.
+- `reminders/AssignmentReminderWorker.kt`: validaciones y publicación de la notificación.
+- `reminders/ReminderNotifier.kt`: canal, publicación y cancelación de notificaciones.
+- `reminders/ReminderCoordinator.kt`: ciclo de vida completo de los recordatorios.
+- `reminders/ReminderDependencies.kt`: dependencias reales del Worker y sustitutos de prueba.
+- `reminders/NotificationPermission.kt`: estado del permiso y apertura de ajustes.
+- `ui/SettingsScreen.kt`: switch, estado del permiso y textos explicativos.
+- `PlannerViewModel.kt` y `ui/PlannerApp.kt`: integración con el guardado, la sesión y la navegación.
+
+### Pruebas y evidencias
+
+| Prueba | Resultado |
+| --- | --- |
+| `gradlew.bat testDebugUnitTest` | **51 pruebas, 0 fallos** |
+| `gradlew.bat connectedDebugAndroidTest` | **23 pruebas, 0 fallos** |
+| `gradlew.bat compileDebugKotlin` | `BUILD SUCCESSFUL` |
+| `gradlew.bat compileDebugAndroidTestKotlin` | `BUILD SUCCESSFUL` |
+| `gradlew.bat lintDebug` | `BUILD SUCCESSFUL` (solo advertencias) |
+| Comprobación manual en emulador Medium Phone | Ajustes abre desde Inicio, el switch solicita el permiso y al concederlo muestra “Notificaciones activas” |
+
+`lintDebug` detectó una llamada a `LocalDate.ofInstant` que requería API 34; se sustituyó por `instant().atZone(zona).toLocalDate()` para conservar la compatibilidad con API 26. Tras el cambio, unitarias, instrumentadas, lint y APK vuelven a pasar.
+
+Las 23 pruebas instrumentadas incluyen 6 nuevas de `ReminderLifecycleTest`:
+
+- crear una actividad deja exactamente un trabajo activo,
+- editar mantiene un solo trabajo y actualiza el delay,
+- completar cancela el trabajo,
+- eliminar cancela el trabajo,
+- guardar tres veces la misma actividad no genera duplicados,
+- apagar el toggle cancela todos los trabajos de la cuenta.
+
+También se conservan las pruebas del Worker, del DAO, del notificador y de las preferencias.
+
+### APK de evidencia
+
+El APK de debug se genera con:
+
+```powershell
+.\gradlew.bat :app:assembleDebug
+```
+
+Archivo resultante:
+
+```text
+app\build\outputs\apk\debug\app-debug.apk
+```
+
+Para instalarlo en un teléfono o emulador conectado por ADB:
+
+```powershell
+adb install -r app\build\outputs\apk\debug\app-debug.apk
+```

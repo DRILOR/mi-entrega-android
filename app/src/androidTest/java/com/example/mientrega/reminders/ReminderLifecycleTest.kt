@@ -28,7 +28,6 @@ import org.junit.runner.RunWith
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 
@@ -288,7 +287,7 @@ class ReminderLifecycleTest {
         awaitWork(name) { active(it).isEmpty() }
 
     private fun dueInDays(days: Long): Long =
-        LocalDate.ofInstant(clock.instant(), ZONE).plusDays(days).toEpochDay()
+        clock.instant().atZone(ZONE).toLocalDate().plusDays(days).toEpochDay()
 
     private class FixedClock(
         private val current: Instant,

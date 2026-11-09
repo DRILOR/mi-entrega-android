@@ -6,7 +6,6 @@ import com.example.mientrega.data.Assignment
 import com.example.mientrega.data.PlannerDao
 import kotlinx.coroutines.flow.StateFlow
 import java.time.Clock
-import java.time.LocalDate
 import java.time.ZoneId
 
 /**
@@ -104,7 +103,8 @@ class ReminderCoordinator(
             return
         }
 
-        val fromDay = LocalDate.ofInstant(clock.instant(), zoneId)
+        // atZone/toLocalDate está disponible desde API 26; LocalDate.ofInstant requiere API 34.
+        val fromDay = clock.instant().atZone(zoneId).toLocalDate()
             .minusDays(1)
             .toEpochDay()
 
