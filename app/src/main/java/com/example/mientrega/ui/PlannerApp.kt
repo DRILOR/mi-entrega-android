@@ -24,6 +24,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
@@ -47,7 +50,17 @@ fun PlannerApp(model: PlannerViewModel) {
     val storedAssignments by model.assignments.collectAsStateWithLifecycle()
     val subjects = storedSubjects.filter { currentUserId != null && it.ownerId == currentUserId }
     val assignments = storedAssignments.filter { currentUserId != null && it.ownerId == currentUserId }
-    val today = rememberLocalDay()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    // Los cambios de fecha/hora/zona se propagan desde el receptor de LocalDay.
+    val today = rememberLocalDay { model.syncReminders() }
+    // Solo en eventos reales de ciclo de vida, nunca durante una recomposición.
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) model.syncReminders()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     val busy by model.busy.collectAsStateWithLifecycle()
     val message by model.message.collectAsStateWithLifecycle()
     val nav = rememberNavController()

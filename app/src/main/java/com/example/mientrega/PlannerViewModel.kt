@@ -100,6 +100,20 @@ class PlannerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Resincroniza los recordatorios de la cuenta activa.
+     *
+     * Se invoca al volver a primer plano y cuando el sistema cambia la fecha,
+     * la hora o la zona horaria. WorkManager calcula el retraso como tiempo
+     * transcurrido, así que hay que recalcular tras esos cambios.
+     */
+    fun syncReminders() {
+        val ownerId = _activeUserId.value ?: return
+        viewModelScope.launch {
+            reminderSafely { reminderCoordinator.sync(ownerId) }
+        }
+    }
+
     fun logout() {
         if (busy.value) return
         val ownerId = _activeUserId.value

@@ -14,20 +14,32 @@ import java.time.Duration
 import java.time.LocalDate
 import java.time.ZonedDateTime
 
-/** Usa días civiles, igual que dueDate; se refresca a medianoche y al volver al primer plano. */
+/**
+ * Usa días civiles, igual que dueDate; se refresca a medianoche y al volver al primer plano.
+ *
+ * @param onClockChanged se invoca cuando el sistema notifica un cambio real de
+ * fecha, hora o zona horaria, o cuando se alcanza la medianoche. No se invoca
+ * en cada recomposición ni al volver a primer plano: eso lo gestiona el
+ * llamador con su propio observador de ciclo de vida.
+ */
 @Composable
-internal fun rememberLocalDay(): Long {
+internal fun rememberLocalDay(onClockChanged: () -> Unit = {}): Long {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val currentOnClockChanged by rememberUpdatedState(onClockChanged)
     var today by remember { mutableLongStateOf(LocalDate.now().toEpochDay()) }
     var clockRevision by remember { mutableIntStateOf(0) }
     DisposableEffect(context, lifecycle) {
-        fun refresh() {
+        fun refreshDay() {
             today = LocalDate.now().toEpochDay()
             clockRevision++
         }
+        fun refreshClock() {
+            refreshDay()
+            currentOnClockChanged()
+        }
         val receiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) { refresh() }
+            override fun onReceive(context: Context?, intent: Intent?) { refreshClock() }
         }
         // Solo broadcasts protegidos del sistema; compatible con minSdk 26.
         context.registerReceiver(receiver, IntentFilter().apply {
@@ -36,7 +48,7 @@ internal fun rememberLocalDay(): Long {
             addAction(Intent.ACTION_TIMEZONE_CHANGED)
         })
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) refresh()
+            if (event == Lifecycle.Event.ON_RESUME) refreshDay()
         }
         lifecycle.addObserver(observer)
         onDispose {
@@ -50,6 +62,7 @@ internal fun rememberLocalDay(): Long {
         delay(Duration.between(now, midnight).toMillis().coerceAtLeast(1L))
         today = LocalDate.now().toEpochDay()
         clockRevision++
+        currentOnClockChanged()
     }
     return today
 }
