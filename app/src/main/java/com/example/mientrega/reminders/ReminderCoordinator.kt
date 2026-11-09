@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.work.WorkManager
 import com.example.mientrega.data.Assignment
 import com.example.mientrega.data.PlannerDao
+import kotlinx.coroutines.flow.StateFlow
 import java.time.Clock
 import java.time.LocalDate
 import java.time.ZoneId
@@ -59,6 +60,9 @@ class ReminderCoordinator(
     private val clock: Clock = Clock.systemDefaultZone(),
     private val zoneId: ZoneId = ZoneId.systemDefault()
 ) {
+
+    /** Estado observable del toggle global de recordatorios. */
+    val remindersEnabled: StateFlow<Boolean> = preferences.enabled
 
     /**
      * Constructor cómodo para producción: adapta directamente el DAO de Room.

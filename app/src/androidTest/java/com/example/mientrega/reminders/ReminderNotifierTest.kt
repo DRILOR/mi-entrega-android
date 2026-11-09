@@ -116,6 +116,38 @@ class ReminderNotifierTest {
         )
     }
 
+    @Test
+    fun cancelAllForRemovesOnlyTheNotificationsOfThatOwner() {
+        val notifier = AndroidReminderNotifier(context)
+        val otherAssignment = assignment.copy(
+            id = assignmentId + 1,
+            ownerId = ownerId + 1
+        )
+        val otherOwnerId = requireNotNull(otherAssignment.ownerId)
+        val otherTag = ReminderPolicy.notificationTag(otherOwnerId, otherAssignment.id)
+        val otherId = ReminderPolicy.notificationId(otherAssignment.id)
+
+        try {
+            notifier.show(assignment, subjectName)
+            notifier.show(otherAssignment, subjectName)
+            assertNotNull(awaitNotification(notificationTag, notificationId))
+            assertNotNull(awaitNotification(otherTag, otherId))
+
+            notifier.cancelAllFor(ownerId)
+
+            assertTrue(
+                "La notificación de la cuenta desactivada debe desaparecer",
+                awaitNoNotification(notificationTag, notificationId)
+            )
+            assertNotNull(
+                "La notificación de otra cuenta no debe cancelarse",
+                awaitNotification(otherTag, otherId)
+            )
+        } finally {
+            notifier.cancelAllFor(otherOwnerId)
+        }
+    }
+
     private fun awaitNotification(tag: String, id: Int): android.service.notification.StatusBarNotification? {
         val deadline = SystemClock.elapsedRealtime() + TIMEOUT_MS
         while (SystemClock.elapsedRealtime() < deadline) {
