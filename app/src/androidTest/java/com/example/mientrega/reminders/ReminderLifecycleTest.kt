@@ -398,7 +398,12 @@ class ReminderLifecycleTest {
     }
 
     private class FakeReminderNotifier : ReminderNotifier {
-        override fun show(assignment: Assignment, subjectName: String) = Unit
+        override fun show(
+            assignment: Assignment,
+            subjectName: String,
+            reminderInstant: Instant
+        ) = Unit
+
         override fun cancel(ownerId: Long, assignmentId: Long) = Unit
         override fun cancelAllFor(ownerId: Long) = Unit
     }

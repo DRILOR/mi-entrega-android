@@ -34,6 +34,7 @@ import org.junit.rules.TestRule
 import org.junit.runner.Description
 import org.junit.runner.RunWith
 import org.junit.runners.model.Statement
+import java.time.Instant
 import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 
@@ -108,6 +109,10 @@ class AssignmentReminderWorkerTest {
         assertEquals(1, notifier.shown.size)
         assertEquals(assignmentId, notifier.shown.single().first.id)
         assertEquals("Tecnologías Móviles", notifier.shown.single().second)
+        assertEquals(
+            Instant.parse("2026-11-19T12:00:00Z"),
+            notifier.reminderInstants.single()
+        )
     }
 
     @Test
@@ -223,14 +228,16 @@ class AssignmentReminderWorkerTest {
     private fun enqueueAndAwait(
         assignmentId: Long,
         ownerId: Long,
-        expectedDueDate: Long
+        expectedDueDate: Long,
+        reminderAt: Instant = Instant.parse("2026-11-19T12:00:00Z")
     ): WorkInfo {
         val request = OneTimeWorkRequestBuilder<AssignmentReminderWorker>()
             .setInputData(
                 workDataOf(
                     AssignmentReminderWorker.KEY_ASSIGNMENT_ID to assignmentId,
                     AssignmentReminderWorker.KEY_OWNER_ID to ownerId,
-                    AssignmentReminderWorker.KEY_EXPECTED_DUE_DATE to expectedDueDate
+                    AssignmentReminderWorker.KEY_EXPECTED_DUE_DATE to expectedDueDate,
+                    AssignmentReminderWorker.KEY_REMINDER_AT to reminderAt.toEpochMilli()
                 )
             )
             .build()
@@ -262,11 +269,17 @@ class AssignmentReminderWorkerTest {
 
     private class FakeReminderNotifier : ReminderNotifier {
         val shown = mutableListOf<Pair<Assignment, String>>()
+        val reminderInstants = mutableListOf<Instant>()
         val cancelled = mutableListOf<Pair<Long, Long>>()
         val cancelledAllFor = mutableListOf<Long>()
 
-        override fun show(assignment: Assignment, subjectName: String) {
+        override fun show(
+            assignment: Assignment,
+            subjectName: String,
+            reminderInstant: Instant
+        ) {
             shown += assignment to subjectName
+            reminderInstants += reminderInstant
         }
 
         override fun cancel(ownerId: Long, assignmentId: Long) {

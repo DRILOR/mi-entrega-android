@@ -80,11 +80,17 @@ En Android 13+ se solicita `POST_NOTIFICATIONS` en tiempo de ejecución. Si el u
 
 ### Entregas para hoy: recordatorio de respaldo
 
-El aviso estándar es el día anterior a las 08:00. Si ese instante ya pasó, pero la actividad vence hoy o en una fecha futura, `ReminderPolicy` devuelve un respaldo a 10 minutos desde el reloj actual. Así una actividad creada para hoy no se queda sin recordatorio. Si la fecha de entrega ya pasó por completo, devuelve `null` y no se programa nada.
+El aviso estándar es el día anterior a las 08:00. Si ese instante ya pasó y la actividad vence **hoy**, `ReminderPolicy` devuelve un respaldo a 10 minutos desde el reloj actual. Así una actividad creada para hoy no se queda sin recordatorio. Si la entrega es **mañana o posterior** y el aviso estándar ya pasó, devuelve `null`: se acepta que ese aviso se omitió y no se inventa uno nuevo. Si la fecha de entrega ya pasó por completo, también devuelve `null`.
 
 La hora del respaldo se guarda en las preferencias con la clave `fallback_target_<assignmentId>`. Antes de calcular un respaldo nuevo, el coordinador reutiliza el valor guardado si todavía es futuro. Sin esto, cada `sync()` en `ON_RESUME` volvería a calcular `now + 10 min` y la notificación nunca llegaría. El coordinador calcula el instante y se lo entrega al scheduler, de modo que WorkManager no vuelve a interpretar la política por su cuenta.
 
 Cuando la hora guardada ya venció y la actividad sigue pendiente, el coordinador escribe `fallback_delivered_<assignmentId> = true` y no programa otro trabajo. Así un respaldo que ya se mostró no vuelve a dispararse cada vez que el usuario abre la aplicación. La marca se conserva junto con el objetivo para que el estado sea explícito y observable en pruebas. Al crear o editar una actividad se borran `fallback_target` y `fallback_delivered`, y al completarla o eliminarla también, de modo que un cambio de fecha pueda generar un respaldo nuevo sin dejar datos obsoletos.
+
+### Hora visible en la notificación y en el formulario
+
+El coordinador calcula el instante del aviso y lo envía al scheduler en `KEY_REMINDER_AT`. El Worker lo recupera y lo pasa al notificador, que formatea la hora con la zona horaria del dispositivo. Así la notificación puede explicar `Recordatorio programado para las {HH:mm} · vence el {dd/MM/yyyy}` aunque WorkManager ejecute el trabajo unos minutos más tarde por sus ventanas de batería. Si el dato no llega, el Worker usa `Instant.now()` para no romper la notificación.
+
+El formulario de actividad reutiliza `ReminderPolicy.reminderInstant` con `Clock.systemDefaultZone()` y `ZoneId.systemDefault()` para mostrar una vista previa antes de guardar. Si devuelve `null`, muestra una advertencia en lugar de prometer un aviso que no se programará.
 
 ### Programación best-effort y ciclo de vida
 

@@ -5,6 +5,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.CancellationException
+import java.time.Instant
 import java.time.LocalDate
 
 /**
@@ -35,6 +36,7 @@ class AssignmentReminderWorker(
         val assignmentId = inputData.getLong(KEY_ASSIGNMENT_ID, -1L)
         val ownerId = inputData.getLong(KEY_OWNER_ID, -1L)
         val expectedDueDate = inputData.getLong(KEY_EXPECTED_DUE_DATE, Long.MIN_VALUE)
+        val reminderAtMillis = inputData.getLong(KEY_REMINDER_AT, Long.MIN_VALUE)
         if (assignmentId <= 0L || ownerId <= 0L || expectedDueDate == Long.MIN_VALUE) {
             return Result.success()
         }
@@ -66,7 +68,12 @@ class AssignmentReminderWorker(
         val subjectName = dao.subjectName(assignment.subjectId, ownerId)
             ?: return Result.success()
 
-        ReminderDependencies.notifier.show(assignment, subjectName)
+        val reminderInstant = if (reminderAtMillis == Long.MIN_VALUE) {
+            Instant.now()
+        } else {
+            Instant.ofEpochMilli(reminderAtMillis)
+        }
+        ReminderDependencies.notifier.show(assignment, subjectName, reminderInstant)
 
         // Revalidación final para cubrir la carrera entre leer y publicar:
         // si la actividad se completó, editó o eliminó mientras tanto, se
@@ -86,6 +93,9 @@ class AssignmentReminderWorker(
         const val KEY_ASSIGNMENT_ID = "assignment_id"
         const val KEY_OWNER_ID = "owner_id"
         const val KEY_EXPECTED_DUE_DATE = "expected_due_date"
+
+        /** Hora para la que se programó el aviso, en milisegundos desde 1970. */
+        const val KEY_REMINDER_AT = "reminder_at"
 
         private const val COMPLETED_STATUS = "Completada"
     }

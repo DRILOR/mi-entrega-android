@@ -72,7 +72,8 @@ class WorkManagerReminderScheduler(
                 workDataOf(
                     AssignmentReminderWorker.KEY_ASSIGNMENT_ID to assignment.id,
                     AssignmentReminderWorker.KEY_OWNER_ID to ownerId,
-                    AssignmentReminderWorker.KEY_EXPECTED_DUE_DATE to assignment.dueDate
+                    AssignmentReminderWorker.KEY_EXPECTED_DUE_DATE to assignment.dueDate,
+                    AssignmentReminderWorker.KEY_REMINDER_AT to reminderInstant.toEpochMilli()
                 )
             )
             .addTag(TAG_ALL_REMINDERS)

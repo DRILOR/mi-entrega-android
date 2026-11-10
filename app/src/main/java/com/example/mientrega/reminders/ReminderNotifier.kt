@@ -11,7 +11,9 @@ import androidx.core.app.NotificationManagerCompat
 import com.example.mientrega.MainActivity
 import com.example.mientrega.R
 import com.example.mientrega.data.Assignment
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
@@ -27,8 +29,9 @@ interface ReminderNotifier {
      *
      * @param assignment actividad persistida, con `ownerId` no nulo.
      * @param subjectName nombre actual de la materia.
+     * @param reminderInstant hora para la que se programó el aviso.
      */
-    fun show(assignment: Assignment, subjectName: String)
+    fun show(assignment: Assignment, subjectName: String, reminderInstant: Instant)
 
     /**
      * Cancela la notificación de una actividad concreta.
@@ -58,23 +61,33 @@ class AndroidReminderNotifier(
     private val appContext: Context = context.applicationContext
     private val notificationManager = NotificationManagerCompat.from(appContext)
     private val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+    private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+    private val zoneId = ZoneId.systemDefault()
 
     init {
         createChannelIfNeeded()
     }
 
-    override fun show(assignment: Assignment, subjectName: String) {
+    override fun show(
+        assignment: Assignment,
+        subjectName: String,
+        reminderInstant: Instant
+    ) {
         if (!notificationManager.areNotificationsEnabled()) return
 
         val ownerId = assignment.ownerId ?: return
         val notificationId = ReminderPolicy.notificationId(assignment.id)
         val tag = ReminderPolicy.notificationTag(ownerId, assignment.id)
         val dueDate = LocalDate.ofEpochDay(assignment.dueDate)
+        val reminderTime = reminderInstant.atZone(zoneId).format(timeFormatter)
 
         val notification = NotificationCompat.Builder(appContext, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_assignment_reminder)
             .setContentTitle(titleFor(assignment, dueDate))
-            .setContentText("$subjectName · vence el ${dueDate.format(dateFormatter)}")
+            .setContentText(
+                "$subjectName · Recordatorio programado para las $reminderTime · " +
+                    "vence el ${dueDate.format(dateFormatter)}"
+            )
             .setContentIntent(openAppIntent(assignment, notificationId))
             .setAutoCancel(true)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)

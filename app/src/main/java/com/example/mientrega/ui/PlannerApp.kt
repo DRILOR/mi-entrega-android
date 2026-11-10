@@ -33,12 +33,17 @@ import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.example.mientrega.*
 import com.example.mientrega.data.*
+import com.example.mientrega.reminders.ReminderPolicy
+import java.time.Clock
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 private val subjectColors = listOf(Color(0xFF5650D8), Color(0xFF008B87), Color(0xFFAD5800), Color(0xFF8B48AE))
 private val subjectColorNames = listOf("Índigo", "Verde", "Naranja", "Violeta")
-private fun dateLabel(day: Long) = LocalDate.ofEpochDay(day).format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+private val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+private fun dateLabel(day: Long) = LocalDate.ofEpochDay(day).format(dateFormatter)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -360,6 +365,22 @@ private fun ActivityForm(current: Assignment?, subjects: List<Subject>, busy: Bo
     var attempted by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val error = if (attempted) Rules.activityError(title, subjectId, date) else null
+    val selectedDate = Rules.parseDate(date)
+    val reminderMessage = selectedDate?.let { epochDay ->
+        val zone = ZoneId.systemDefault()
+        val reminder = ReminderPolicy.reminderInstant(
+            epochDay,
+            Clock.systemDefaultZone(),
+            zone
+        )
+        if (reminder == null) {
+            "⚠️ La fecha ya pasó o no se programará aviso"
+        } else {
+            val localReminder = reminder.atZone(zone)
+            "🔔 Te recordaremos el ${localReminder.toLocalDate().format(dateFormatter)} " +
+                "a las ${localReminder.toLocalTime().format(timeFormatter)}"
+        }
+    }
     Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Los campos con * son obligatorios.")
         OutlinedTextField(value = title, onValueChange = { title = it.take(100) }, label = { Text("Título *") }, singleLine = true,
@@ -373,6 +394,13 @@ private fun ActivityForm(current: Assignment?, subjects: List<Subject>, busy: Bo
             val selected = runCatching { LocalDate.parse(date) }.getOrDefault(LocalDate.now())
             DatePickerDialog(context, { _, y, m, d -> date = LocalDate.of(y, m + 1, d).toString() }, selected.year, selected.monthValue - 1, selected.dayOfMonth).show()
         }, modifier = Modifier.fillMaxWidth()) { Text(Rules.parseDate(date)?.let { dateLabel(it) } ?: "Seleccionar fecha") }
+        if (reminderMessage != null) {
+            Text(
+                reminderMessage,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         if (attempted && Rules.parseDate(date) == null) Text("Selecciona una fecha.", color = MaterialTheme.colorScheme.error)
         Choice("Prioridad", priority, Rules.priorities) { priority = Rules.priorities[it] }
         Choice("Estado", status, Rules.statuses) { status = Rules.statuses[it] }

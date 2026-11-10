@@ -77,14 +77,15 @@ Las cuentas y los datos están almacenados en este dispositivo. No existe sincro
 ### Funcionalidad entregada
 
 - Recordatorios de entregas con **WorkManager**, un trabajo único por actividad.
-- Política de aviso: **el día anterior a la entrega a las 08:00 hora local**. Si el aviso estándar ya pasó pero la entrega es hoy o futura, se programa un respaldo **10 minutos** después de guardar. La hora del respaldo se conserva en preferencias (`fallback_target_<assignmentId>`) para que las resincronizaciones no la desplacen.
+- Política de aviso: **el día anterior a la entrega a las 08:00 hora local**. Si el aviso estándar ya pasó pero la entrega es **hoy**, se programa un respaldo **10 minutos** después de guardar. Si la entrega es **mañana o posterior** y el aviso estándar ya pasó, no se programa nada: ese aviso se considera omitido. La hora del respaldo se conserva en preferencias (`fallback_target_<assignmentId>`) para que las resincronizaciones no la desplacen.
 - Si el respaldo ya venció y la actividad sigue pendiente, se marca como entregado (`fallback_delivered_<assignmentId>`) y **no se reprograma**, evitando notificaciones repetitivas. Editar la actividad borra ambas marcas para permitir un nuevo respaldo. La fecha de entrega sigue guardándose como `dueDate` en `epochDay`.
 - Toggle global **“Activar recordatorios”** en la pantalla de Ajustes. Está apagado por defecto (opt-in) y se persiste en preferencias privadas.
 - Solicitud y gestión de `POST_NOTIFICATIONS` en Android 13+:
   - botón para pedir el permiso,
   - aviso de “Notificaciones bloqueadas”,
   - acceso a los ajustes del sistema cuando la denegación es permanente.
-- Un canal de notificaciones propio y notificaciones con **tag e ID estables** para evitar duplicados.
+- Un canal de notificaciones propio y notificaciones con **tag e ID estables** para evitar duplicados. El texto incluye la hora del aviso: `Recordatorio programado para las {HH:mm} · vence el {dd/MM/yyyy}`.
+- Vista previa en el formulario de actividad: bajo el selector de fecha se muestra `🔔 Te recordaremos el {fecha} a las {hora}` o, si no habrá aviso, `⚠️ La fecha ya pasó o no se programará aviso`.
 - Cancelación de recordatorios al completar, eliminar o desactivar una actividad, al apagar el toggle y al cerrar sesión.
 - Resincronización al volver a primer plano (`ON_RESUME`) y cuando cambian la fecha, la hora, la zona horaria o se alcanza la medianoche.
 - El Worker relee la actividad desde Room y valida propietario, sesión activa, estado, fecha y materia antes de notificar.
@@ -127,7 +128,7 @@ Las 31 pruebas instrumentadas incluyen 8 de `ReminderLifecycleTest`:
 - sincronizar dos veces una entrega de hoy conserva la misma hora de respaldo,
 - un respaldo vencido no se reprograma y queda marcado como entregado.
 
-También se conservan las pruebas del Worker, del DAO, del notificador y de las preferencias; estas últimas verifican las claves `fallback_target_<assignmentId>` y `fallback_delivered_<assignmentId>`, su persistencia y su eliminación selectiva. `ReminderPolicyTest` cubre el aviso estándar a las 08:00, el respaldo de 10 minutos para entregas de hoy o futuras y el caso sin recordatorio cuando la fecha ya pasó. `ReminderCoordinatorTest` simula dos `sync()` consecutivos con el reloj avanzado, comprueba que el respaldo no cambia, que un respaldo vencido no genera otro trabajo y que editar la actividad limpia la marca de entregado.
+También se conservan las pruebas del Worker, del DAO, del notificador y de las preferencias; estas últimas verifican las claves `fallback_target_<assignmentId>` y `fallback_delivered_<assignmentId>`, su persistencia y su eliminación selectiva. `ReminderPolicyTest` cubre el aviso estándar a las 08:00, el respaldo de 10 minutos solo para entregas de hoy, la omisión del aviso para una tarea de mañana cuyo aviso estándar ya pasó y el caso sin recordatorio cuando la fecha ya pasó. `ReminderNotifierTest` comprueba que el texto de la notificación incluye la hora programada. `ReminderCoordinatorTest` simula dos `sync()` consecutivos con el reloj avanzado, comprueba que el respaldo no cambia, que un respaldo vencido no genera otro trabajo y que editar la actividad limpia la marca de entregado.
 
 ### APK de evidencia
 

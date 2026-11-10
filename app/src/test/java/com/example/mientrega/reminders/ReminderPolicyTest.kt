@@ -58,13 +58,13 @@ class ReminderPolicyTest {
     }
 
     @Test
-    fun standardReminderAlreadyPassedButDueDateIsFutureReturnsFallback() {
+    fun tomorrowsAssignmentWithStandardReminderAlreadyPassedReturnsNull() {
         val now = expectedReminder.plusNanos(1)
         val clock = Clock.fixed(now, zone)
 
         val result = ReminderPolicy.reminderInstant(dueDate, clock, zone)
 
-        assertEquals(now.plus(fallbackDelay), result)
+        assertNull(result)
     }
 
     @Test
@@ -121,12 +121,12 @@ class ReminderPolicyTest {
     }
 
     @Test
-    fun clockExactlyAtReminderTimeReturnsFallback() {
+    fun clockExactlyAtStandardReminderForTomorrowReturnsNull() {
         val clock = Clock.fixed(expectedReminder, zone)
 
         val result = ReminderPolicy.reminderInstant(dueDate, clock, zone)
 
-        assertEquals(expectedReminder.plus(fallbackDelay), result)
+        assertNull(result)
     }
 
     @Test

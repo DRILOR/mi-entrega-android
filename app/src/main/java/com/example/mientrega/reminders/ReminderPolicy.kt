@@ -42,27 +42,28 @@ object ReminderPolicy {
             .toInstant()
 
     /**
-     * Indica si para [dueDate] ya pasó el aviso estándar pero la entrega sigue
-     * vigente, es decir, si corresponde usar el respaldo.
+     * Indica si corresponde usar el respaldo: el aviso estándar ya pasó y la
+     * entrega es **hoy**. Para fechas futuras cuyo aviso estándar ya pasó se
+     * omite el recordatorio; no se inventa uno nuevo.
      */
     fun requiresFallback(dueDate: Long, clock: Clock, zoneId: ZoneId): Boolean {
         val now = clock.instant()
         val due = LocalDate.ofEpochDay(dueDate)
         return !standardReminderInstant(dueDate, zoneId).isAfter(now) &&
-            !due.isBefore(now.atZone(zoneId).toLocalDate())
+            due == now.atZone(zoneId).toLocalDate()
     }
 
     /**
      * Devuelve el instante en el que debe sonar el recordatorio de una entrega.
      *
      * El aviso estándar es el día anterior a [dueDate] a las 08:00 en [zoneId].
-     * Si ese instante ya pasó pero la entrega todavía no venció (es hoy o una
-     * fecha futura), devuelve [fallbackTarget] cuando sigue siendo futuro; así
-     * las sincronizaciones sucesivas no desplazan el aviso. Si no hay un
-     * respaldo previo, calcula uno a [FALLBACK_DELAY_MINUTES] minutos desde
-     * [clock]. Una actividad creada para hoy no se queda sin aviso.
+     * Si ese instante ya pasó y la entrega es **hoy**, devuelve
+     * [fallbackTarget] cuando sigue siendo futuro; así las sincronizaciones
+     * sucesivas no desplazan el aviso. Si no hay un respaldo previo, calcula
+     * uno a [FALLBACK_DELAY_MINUTES] minutos desde [clock].
      *
-     * Devuelve `null` solo cuando la fecha de entrega ya pasó por completo.
+     * Devuelve `null` cuando la fecha ya pasó o cuando la entrega es futura y
+     * su aviso estándar ya se omitió.
      *
      * @param dueDate día civil de entrega, tal como se guarda en `Assignment.dueDate`.
      * @param clock reloj inyectable para pruebas.

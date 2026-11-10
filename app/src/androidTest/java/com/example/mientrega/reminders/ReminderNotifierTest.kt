@@ -23,7 +23,9 @@ import org.junit.rules.TestRule
 import org.junit.runner.Description
 import org.junit.runner.RunWith
 import org.junit.runners.model.Statement
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @RunWith(AndroidJUnit4::class)
@@ -48,6 +50,10 @@ class ReminderNotifierTest {
 
     private val notificationTag = ReminderPolicy.notificationTag(ownerId, assignmentId)
     private val notificationId = ReminderPolicy.notificationId(assignmentId)
+    private val reminderAt: Instant = dueDate.minusDays(1)
+        .atTime(ReminderPolicy.REMINDER_HOUR, ReminderPolicy.REMINDER_MINUTE)
+        .atZone(ZoneId.systemDefault())
+        .toInstant()
 
     /**
      * En Android 13+ se necesita POST_NOTIFICATIONS. En versiones anteriores
@@ -79,7 +85,7 @@ class ReminderNotifierTest {
 
     @Test
     fun showPublishesNotificationWithExpectedTagContentAndChannel() {
-        AndroidReminderNotifier(context).show(assignment, subjectName)
+        AndroidReminderNotifier(context).show(assignment, subjectName, reminderAt)
 
         val posted = awaitNotification(notificationTag, notificationId)
 
@@ -93,8 +99,11 @@ class ReminderNotifierTest {
             "Entrega mañana: ${assignment.title}",
             extras.getString(Notification.EXTRA_TITLE)
         )
+        val reminderTime = reminderAt.atZone(ZoneId.systemDefault())
+            .format(DateTimeFormatter.ofPattern("HH:mm"))
         assertEquals(
-            "$subjectName · vence el ${dueDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))}",
+            "$subjectName · Recordatorio programado para las $reminderTime · " +
+                "vence el ${dueDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))}",
             extras.getString(Notification.EXTRA_TEXT)
         )
     }
@@ -102,7 +111,7 @@ class ReminderNotifierTest {
     @Test
     fun cancelRemovesTheActiveNotification() {
         val notifier = AndroidReminderNotifier(context)
-        notifier.show(assignment, subjectName)
+        notifier.show(assignment, subjectName, reminderAt)
         assertNotNull(
             "La notificación debe existir antes de cancelarla",
             awaitNotification(notificationTag, notificationId)
@@ -128,8 +137,8 @@ class ReminderNotifierTest {
         val otherId = ReminderPolicy.notificationId(otherAssignment.id)
 
         try {
-            notifier.show(assignment, subjectName)
-            notifier.show(otherAssignment, subjectName)
+            notifier.show(assignment, subjectName, reminderAt)
+            notifier.show(otherAssignment, subjectName, reminderAt)
             assertNotNull(awaitNotification(notificationTag, notificationId))
             assertNotNull(awaitNotification(otherTag, otherId))
 

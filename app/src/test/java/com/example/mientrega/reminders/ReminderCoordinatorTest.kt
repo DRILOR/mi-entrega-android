@@ -431,7 +431,11 @@ class ReminderCoordinatorTest {
         val cancelled = mutableListOf<Pair<Long, Long>>()
         val cancelledAllFor = mutableListOf<Long>()
 
-        override fun show(assignment: Assignment, subjectName: String) {
+        override fun show(
+            assignment: Assignment,
+            subjectName: String,
+            reminderInstant: Instant
+        ) {
             shown += assignment to subjectName
         }
 
