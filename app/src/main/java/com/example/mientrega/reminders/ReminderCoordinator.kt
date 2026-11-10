@@ -136,6 +136,12 @@ class ReminderCoordinator(
         if (assignmentId <= 0L || ownerId <= 0L) return
 
         val assignment = assignments.byId(assignmentId, ownerId)
+        if (assignment != null && assignment.ownerId == ownerId) {
+            // Un guardado explícito (crear o editar) invalida el respaldo
+            // anterior, de modo que una nueva fecha pueda generar otro aviso.
+            clearFallbackState(assignmentId)
+        }
+
         val eligible = assignment != null &&
             assignment.ownerId == ownerId &&
             assignment.status != COMPLETED_STATUS &&
@@ -147,7 +153,7 @@ class ReminderCoordinator(
         } else {
             scheduler.cancel(ownerId, assignmentId)
             notifier.cancel(ownerId, assignmentId)
-            preferences.clearFallbackTarget(assignmentId)
+            clearFallbackState(assignmentId)
         }
     }
 
@@ -208,41 +214,61 @@ class ReminderCoordinator(
      * Si el aviso estándar ya pasó y la entrega sigue vigente, reutiliza la
      * hora previamente guardada para que un nuevo `sync()` (por ejemplo, al
      * volver a primer plano) no desplace el recordatorio otros 10 minutos.
+     *
+     * Cuando la hora del respaldo ya venció, se marca como entregado y se
+     * devuelve `null`: no se reprograma otro aviso para la misma actividad.
      */
     private fun resolveReminder(assignment: Assignment): Instant? {
         val now = clock.instant()
-        val storedTarget = preferences.fallbackTargetMillis(assignment.id)
+        val assignmentId = assignment.id
+        val storedTarget = preferences.fallbackTargetMillis(assignmentId)
             ?.let(Instant::ofEpochMilli)
 
-        val reminder = ReminderPolicy.reminderInstant(
-            assignment.dueDate,
-            clock,
-            zoneId,
-            storedTarget
-        )
-        if (reminder == null) {
-            if (storedTarget != null) preferences.clearFallbackTarget(assignment.id)
+        if (!ReminderPolicy.requiresFallback(assignment.dueDate, clock, zoneId)) {
+            val reminder = ReminderPolicy.reminderInstant(
+                assignment.dueDate,
+                clock,
+                zoneId
+            )
+            if (reminder == null ||
+                storedTarget != null ||
+                preferences.isFallbackDelivered(assignmentId)
+            ) {
+                // La entrega ya pasó o el aviso estándar volvió a ser futuro:
+                // el respaldo anterior quedó obsoleto.
+                clearFallbackState(assignmentId)
+            }
+            return reminder
+        }
+
+        if (preferences.isFallbackDelivered(assignmentId)) return null
+
+        if (storedTarget != null) {
+            if (storedTarget.isAfter(now)) return storedTarget
+
+            // El respaldo ya venció y la tarea sigue pendiente. Se asume
+            // notificado para no generar avisos repetitivos.
+            preferences.setFallbackDelivered(assignmentId, true)
             return null
         }
 
-        if (ReminderPolicy.requiresFallback(assignment.dueDate, clock, zoneId)) {
-            if (storedTarget == null || !storedTarget.isAfter(now)) {
-                preferences.setFallbackTargetMillis(assignment.id, reminder.toEpochMilli())
-            }
-        } else if (storedTarget != null) {
-            // El aviso estándar sigue siendo futuro: cualquier respaldo previo
-            // quedó obsoleto.
-            preferences.clearFallbackTarget(assignment.id)
-        }
+        val target = requireNotNull(
+            ReminderPolicy.reminderInstant(assignment.dueDate, clock, zoneId)
+        )
+        preferences.setFallbackTargetMillis(assignmentId, target.toEpochMilli())
+        return target
+    }
 
-        return reminder
+    private fun clearFallbackState(assignmentId: Long) {
+        preferences.clearFallbackTarget(assignmentId)
+        preferences.clearFallbackDelivered(assignmentId)
     }
 
     private fun cancelReminder(ownerId: Long, assignmentId: Long) {
         if (ownerId <= 0L || assignmentId <= 0L) return
         scheduler.cancel(ownerId, assignmentId)
         notifier.cancel(ownerId, assignmentId)
-        preferences.clearFallbackTarget(assignmentId)
+        clearFallbackState(assignmentId)
     }
 
     companion object {

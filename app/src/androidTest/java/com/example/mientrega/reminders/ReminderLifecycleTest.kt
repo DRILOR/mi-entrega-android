@@ -240,6 +240,28 @@ class ReminderLifecycleTest {
         assertEquals(expectedRemaining, active(infos).single().initialDelayMillis)
     }
 
+    /**
+     * Si el respaldo de hoy ya venció y la actividad sigue pendiente, no se
+     * programa otro trabajo: queda marcado como entregado.
+     */
+    @Test
+    fun expiredTodayFallbackIsNotRescheduled() = runBlocking {
+        val owner = createOwner()
+        val assignmentId = createAssignment(owner, dueDate = dueInDays(0))
+        val name = workName(owner, assignmentId)
+
+        coordinator.onAssignmentSaved(assignmentId, owner)
+        awaitWork(name) { active(it).size == 1 }
+
+        clock.advance(
+            Duration.ofMinutes(ReminderPolicy.FALLBACK_DELAY_MINUTES + 1)
+        )
+        coordinator.sync(owner)
+
+        assertTrue(active(awaitNoActiveWork(name)).isEmpty())
+        assertTrue(preferences.isFallbackDelivered(assignmentId))
+    }
+
     /** Desactivar el toggle cancela todos los trabajos de la cuenta. */
     @Test
     fun disablingRemindersCancelsEveryWorkOfTheOwner() = runBlocking {
@@ -340,6 +362,7 @@ class ReminderLifecycleTest {
     private class FakeReminderPreferences(enabled: Boolean) : ReminderPreferences {
         private val state = MutableStateFlow(enabled)
         private val fallbackTargets = mutableMapOf<Long, Long>()
+        private val fallbackDelivered = mutableSetOf<Long>()
 
         override val enabled: StateFlow<Boolean> = state.asStateFlow()
 
@@ -356,6 +379,21 @@ class ReminderLifecycleTest {
 
         override fun clearFallbackTarget(assignmentId: Long) {
             fallbackTargets.remove(assignmentId)
+        }
+
+        override fun isFallbackDelivered(assignmentId: Long): Boolean =
+            assignmentId in fallbackDelivered
+
+        override fun setFallbackDelivered(assignmentId: Long, delivered: Boolean) {
+            if (delivered) {
+                fallbackDelivered += assignmentId
+            } else {
+                fallbackDelivered -= assignmentId
+            }
+        }
+
+        override fun clearFallbackDelivered(assignmentId: Long) {
+            fallbackDelivered -= assignmentId
         }
     }
 

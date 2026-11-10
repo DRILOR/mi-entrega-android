@@ -33,6 +33,20 @@ interface ReminderPreferences {
 
     /** Elimina la hora del respaldo de una actividad. */
     fun clearFallbackTarget(assignmentId: Long)
+
+    /**
+     * Indica si el respaldo de una actividad ya venció.
+     *
+     * Una vez marcado, no se vuelve a programar para evitar notificaciones
+     * repetitivas mientras la actividad siga pendiente.
+     */
+    fun isFallbackDelivered(assignmentId: Long): Boolean
+
+    /** Marca o desmarca el respaldo como entregado. */
+    fun setFallbackDelivered(assignmentId: Long, delivered: Boolean)
+
+    /** Elimina la marca de respaldo entregado. */
+    fun clearFallbackDelivered(assignmentId: Long)
 }
 
 /**
@@ -87,6 +101,21 @@ class SharedPreferencesReminderPreferences(
             .apply()
     }
 
+    override fun isFallbackDelivered(assignmentId: Long): Boolean =
+        preferences.getBoolean(fallbackDeliveredKey(assignmentId), false)
+
+    override fun setFallbackDelivered(assignmentId: Long, delivered: Boolean) {
+        preferences.edit()
+            .putBoolean(fallbackDeliveredKey(assignmentId), delivered)
+            .apply()
+    }
+
+    override fun clearFallbackDelivered(assignmentId: Long) {
+        preferences.edit()
+            .remove(fallbackDeliveredKey(assignmentId))
+            .apply()
+    }
+
     companion object {
         /** Mismo dominio de preferencias que usa la app para ajustes locales. */
         const val PREFS_NAME = "mi-entrega-settings"
@@ -97,11 +126,18 @@ class SharedPreferencesReminderPreferences(
         /** Prefijo de la clave que guarda el respaldo de cada actividad. */
         const val KEY_FALLBACK_PREFIX = "fallback_target_"
 
+        /** Prefijo de la clave que marca un respaldo como ya entregado. */
+        const val KEY_FALLBACK_DELIVERED_PREFIX = "fallback_delivered_"
+
         /** Los recordatorios son opt-in. */
         const val DEFAULT_ENABLED = false
 
         /** Clave de preferencias del respaldo de una actividad. */
         fun fallbackTargetKey(assignmentId: Long): String =
             "$KEY_FALLBACK_PREFIX$assignmentId"
+
+        /** Clave de preferencias de la marca de respaldo entregado. */
+        fun fallbackDeliveredKey(assignmentId: Long): String =
+            "$KEY_FALLBACK_DELIVERED_PREFIX$assignmentId"
     }
 }

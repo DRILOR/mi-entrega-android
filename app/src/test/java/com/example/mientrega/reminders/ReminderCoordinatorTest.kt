@@ -143,14 +143,7 @@ class ReminderCoordinatorTest {
     @Test
     fun syncTwiceKeepsTheSameFallbackTargetForToday() = runBlocking {
         val mutableClock = MutableClock(clock.instant(), zone)
-        val mutableCoordinator = ReminderCoordinator(
-            assignments = source,
-            scheduler = scheduler,
-            preferences = preferences,
-            notifier = notifier,
-            clock = mutableClock,
-            zoneId = zone
-        )
+        val mutableCoordinator = coordinatorWith(mutableClock)
         source.pendingByOwner[OWNER] = listOf(assignment(id = 1L, dueDate = dueToday))
 
         mutableCoordinator.sync(OWNER)
@@ -162,6 +155,50 @@ class ReminderCoordinatorTest {
         assertEquals(2, scheduler.scheduledInstants.size)
         assertEquals(firstTarget, scheduler.scheduledInstants.last())
         assertEquals(firstTarget.toEpochMilli(), preferences.fallbackTargetMillis(1L))
+    }
+
+    @Test
+    fun expiredFallbackIsMarkedDeliveredAndNotRescheduled() = runBlocking {
+        val mutableClock = MutableClock(clock.instant(), zone)
+        val mutableCoordinator = coordinatorWith(mutableClock)
+        source.pendingByOwner[OWNER] = listOf(assignment(id = 1L, dueDate = dueToday))
+
+        mutableCoordinator.sync(OWNER)
+        val firstTarget = scheduler.scheduledInstants.single()
+        assertEquals(1, scheduler.scheduled.size)
+
+        mutableClock.advance(
+            Duration.ofMinutes(ReminderPolicy.FALLBACK_DELAY_MINUTES + 1)
+        )
+        mutableCoordinator.sync(OWNER)
+
+        assertEquals(
+            "Un respaldo vencido no debe generar otro trabajo",
+            1,
+            scheduler.scheduled.size
+        )
+        assertTrue(preferences.isFallbackDelivered(1L))
+        assertEquals(firstTarget.toEpochMilli(), preferences.fallbackTargetMillis(1L))
+    }
+
+    @Test
+    fun savingAssignmentClearsDeliveredMarkAndSchedulesNewFallback() = runBlocking {
+        preferences.setFallbackDelivered(1L, true)
+        preferences.setFallbackTargetMillis(1L, clock.instant().toEpochMilli())
+        source.byId[1L to OWNER] = assignment(id = 1L, dueDate = dueToday)
+
+        coordinator.onAssignmentSaved(assignmentId = 1L, ownerId = OWNER)
+
+        assertFalse(preferences.isFallbackDelivered(1L))
+        assertEquals(1, scheduler.scheduled.size)
+        assertEquals(
+            clock.instant().plus(Duration.ofMinutes(ReminderPolicy.FALLBACK_DELAY_MINUTES)),
+            scheduler.scheduledInstants.single()
+        )
+        assertEquals(
+            scheduler.scheduledInstants.single().toEpochMilli(),
+            preferences.fallbackTargetMillis(1L)
+        )
     }
 
     @Test
@@ -199,23 +236,27 @@ class ReminderCoordinatorTest {
     @Test
     fun onCompletedCancelsWorkAndShownNotification() = runBlocking {
         preferences.setFallbackTargetMillis(1L, clock.instant().toEpochMilli())
+        preferences.setFallbackDelivered(1L, true)
 
         coordinator.onCompleted(ownerId = OWNER, assignmentId = 1L)
 
         assertEquals(listOf(OWNER to 1L), scheduler.cancelled)
         assertEquals(listOf(OWNER to 1L), notifier.cancelled)
         assertNull(preferences.fallbackTargetMillis(1L))
+        assertFalse(preferences.isFallbackDelivered(1L))
     }
 
     @Test
     fun onDeletedCancelsWorkAndShownNotification() = runBlocking {
         preferences.setFallbackTargetMillis(1L, clock.instant().toEpochMilli())
+        preferences.setFallbackDelivered(1L, true)
 
         coordinator.onDeleted(ownerId = OWNER, assignmentId = 1L)
 
         assertEquals(listOf(OWNER to 1L), scheduler.cancelled)
         assertEquals(listOf(OWNER to 1L), notifier.cancelled)
         assertNull(preferences.fallbackTargetMillis(1L))
+        assertFalse(preferences.isFallbackDelivered(1L))
     }
 
     @Test
@@ -265,6 +306,16 @@ class ReminderCoordinatorTest {
         assertEquals(1, scheduler.cancelAllCalls)
         assertTrue(notifier.cancelledAllFor.isEmpty())
     }
+
+    private fun coordinatorWith(clock: Clock): ReminderCoordinator =
+        ReminderCoordinator(
+            assignments = source,
+            scheduler = scheduler,
+            preferences = preferences,
+            notifier = notifier,
+            clock = clock,
+            zoneId = zone
+        )
 
     private fun assignment(
         id: Long,
@@ -325,6 +376,7 @@ class ReminderCoordinatorTest {
     private class FakePreferences(initial: Boolean) : ReminderPreferences {
         private val state = MutableStateFlow(initial)
         private val fallbackTargets = mutableMapOf<Long, Long>()
+        private val fallbackDelivered = mutableSetOf<Long>()
 
         override val enabled: StateFlow<Boolean> = state.asStateFlow()
 
@@ -341,6 +393,21 @@ class ReminderCoordinatorTest {
 
         override fun clearFallbackTarget(assignmentId: Long) {
             fallbackTargets.remove(assignmentId)
+        }
+
+        override fun isFallbackDelivered(assignmentId: Long): Boolean =
+            assignmentId in fallbackDelivered
+
+        override fun setFallbackDelivered(assignmentId: Long, delivered: Boolean) {
+            if (delivered) {
+                fallbackDelivered += assignmentId
+            } else {
+                fallbackDelivered -= assignmentId
+            }
+        }
+
+        override fun clearFallbackDelivered(assignmentId: Long) {
+            fallbackDelivered -= assignmentId
         }
     }
 

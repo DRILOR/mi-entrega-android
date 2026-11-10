@@ -82,7 +82,9 @@ En Android 13+ se solicita `POST_NOTIFICATIONS` en tiempo de ejecución. Si el u
 
 El aviso estándar es el día anterior a las 08:00. Si ese instante ya pasó, pero la actividad vence hoy o en una fecha futura, `ReminderPolicy` devuelve un respaldo a 10 minutos desde el reloj actual. Así una actividad creada para hoy no se queda sin recordatorio. Si la fecha de entrega ya pasó por completo, devuelve `null` y no se programa nada.
 
-La hora del respaldo se guarda en las preferencias con la clave `fallback_target_<assignmentId>`. Antes de calcular un respaldo nuevo, el coordinador reutiliza el valor guardado si todavía es futuro. Sin esto, cada `sync()` en `ON_RESUME` volvería a calcular `now + 10 min` y la notificación nunca llegaría. Al completar o eliminar la actividad se borra esa clave para no dejar datos obsoletos. El coordinador calcula el instante y se lo entrega al scheduler, de modo que WorkManager no vuelve a interpretar la política por su cuenta.
+La hora del respaldo se guarda en las preferencias con la clave `fallback_target_<assignmentId>`. Antes de calcular un respaldo nuevo, el coordinador reutiliza el valor guardado si todavía es futuro. Sin esto, cada `sync()` en `ON_RESUME` volvería a calcular `now + 10 min` y la notificación nunca llegaría. El coordinador calcula el instante y se lo entrega al scheduler, de modo que WorkManager no vuelve a interpretar la política por su cuenta.
+
+Cuando la hora guardada ya venció y la actividad sigue pendiente, el coordinador escribe `fallback_delivered_<assignmentId> = true` y no programa otro trabajo. Así un respaldo que ya se mostró no vuelve a dispararse cada vez que el usuario abre la aplicación. La marca se conserva junto con el objetivo para que el estado sea explícito y observable en pruebas. Al crear o editar una actividad se borran `fallback_target` y `fallback_delivered`, y al completarla o eliminarla también, de modo que un cambio de fecha pueda generar un respaldo nuevo sin dejar datos obsoletos.
 
 ### Programación best-effort y ciclo de vida
 
@@ -96,4 +98,4 @@ Los avisos se resincronizan al volver a primer plano y cuando cambian la fecha, 
 - Pruebas instrumentadas con Room en memoria, notificador falso y WorkManager de prueba.
 - Pruebas del ciclo de vida completo: crear, editar, completar, eliminar, no duplicados y desactivar.
 - Pruebas del Worker, del DAO, del notificador real y de las preferencias.
-- Resultado de cierre: **59 pruebas unitarias y 27 instrumentadas en verde**.
+- Resultado de cierre: **61 pruebas unitarias y 31 instrumentadas en verde**.

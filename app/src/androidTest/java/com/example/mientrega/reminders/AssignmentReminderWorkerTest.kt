@@ -281,6 +281,7 @@ class AssignmentReminderWorkerTest {
     private class FakeReminderPreferences(enabled: Boolean) : ReminderPreferences {
         private val state = MutableStateFlow(enabled)
         private val fallbackTargets = mutableMapOf<Long, Long>()
+        private val fallbackDelivered = mutableSetOf<Long>()
 
         override val enabled: StateFlow<Boolean> = state.asStateFlow()
 
@@ -297,6 +298,21 @@ class AssignmentReminderWorkerTest {
 
         override fun clearFallbackTarget(assignmentId: Long) {
             fallbackTargets.remove(assignmentId)
+        }
+
+        override fun isFallbackDelivered(assignmentId: Long): Boolean =
+            assignmentId in fallbackDelivered
+
+        override fun setFallbackDelivered(assignmentId: Long, delivered: Boolean) {
+            if (delivered) {
+                fallbackDelivered += assignmentId
+            } else {
+                fallbackDelivered -= assignmentId
+            }
+        }
+
+        override fun clearFallbackDelivered(assignmentId: Long) {
+            fallbackDelivered -= assignmentId
         }
     }
 

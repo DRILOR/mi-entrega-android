@@ -101,4 +101,38 @@ class ReminderPreferencesTest {
         assertNull(preferences.fallbackTargetMillis(42L))
         assertEquals(2_000L, preferences.fallbackTargetMillis(43L))
     }
+
+    @Test
+    fun fallbackDeliveredIsFalseByDefault() {
+        val preferences = SharedPreferencesReminderPreferences(context, preferencesName)
+
+        assertFalse(preferences.isFallbackDelivered(42L))
+    }
+
+    @Test
+    fun fallbackDeliveredPersistsWithTheDocumentedKey() {
+        val preferences = SharedPreferencesReminderPreferences(context, preferencesName)
+
+        preferences.setFallbackDelivered(42L, true)
+
+        assertTrue(preferences.isFallbackDelivered(42L))
+        assertTrue(
+            context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
+                .getBoolean("fallback_delivered_42", false)
+        )
+        val recreated = SharedPreferencesReminderPreferences(context, preferencesName)
+        assertTrue(recreated.isFallbackDelivered(42L))
+    }
+
+    @Test
+    fun clearingFallbackDeliveredRemovesOnlyThatAssignment() {
+        val preferences = SharedPreferencesReminderPreferences(context, preferencesName)
+        preferences.setFallbackDelivered(42L, true)
+        preferences.setFallbackDelivered(43L, true)
+
+        preferences.clearFallbackDelivered(42L)
+
+        assertFalse(preferences.isFallbackDelivered(42L))
+        assertTrue(preferences.isFallbackDelivered(43L))
+    }
 }
