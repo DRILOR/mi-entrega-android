@@ -4,7 +4,7 @@
 **Rama de la Etapa 3:** `etapa3/integrante3-recordatorios`  
 **Responsable de la Etapa 1:** Dailer Almanza  
 **Responsable de la Etapa 3:** Integrante 3  
-**Estado:** Etapa 3 implementada y verificada; 61 pruebas unitarias y 31 instrumentadas en verde.
+**Estado:** Etapa 3 implementada y verificada; 66 pruebas unitarias y 31 instrumentadas en verde.
 
 ## Base anterior (commit 93ae4ba)
 
@@ -85,7 +85,7 @@ Las cuentas y los datos están almacenados en este dispositivo. No existe sincro
   - aviso de “Notificaciones bloqueadas”,
   - acceso a los ajustes del sistema cuando la denegación es permanente.
 - Un canal de notificaciones propio y notificaciones con **tag e ID estables** para evitar duplicados. El texto incluye la hora del aviso: `Recordatorio programado para las {HH:mm} · vence el {dd/MM/yyyy}`.
-- Vista previa en el formulario de actividad: bajo el selector de fecha se muestra `🔔 Te recordaremos el {fecha} a las {hora}` o, si no habrá aviso, `⚠️ La fecha ya pasó o no se programará aviso`.
+- Vista previa en el formulario de actividad: bajo el selector de fecha se muestra `🔔 Te recordaremos el {fecha} a las {hora}`; si el aviso está a menos de 15 minutos (respaldo de hoy), muestra `🔔 Te recordaremos hoy en {N} minutos (a las {HH:mm})`. Si no habrá aviso: `⚠️ La fecha ya pasó o no se programará aviso`.
 - Cancelación de recordatorios al completar, eliminar o desactivar una actividad, al apagar el toggle y al cerrar sesión.
 - Resincronización al volver a primer plano (`ON_RESUME`) y cuando cambian la fecha, la hora, la zona horaria o se alcanza la medianoche.
 - El Worker relee la actividad desde Room y valida propietario, sesión activa, estado, fecha y materia antes de notificar.
@@ -108,7 +108,7 @@ Las cuentas y los datos están almacenados en este dispositivo. No existe sincro
 
 | Prueba | Resultado |
 | --- | --- |
-| `gradlew.bat testDebugUnitTest` | **61 pruebas, 0 fallos** |
+| `gradlew.bat testDebugUnitTest` | **66 pruebas, 0 fallos** |
 | `gradlew.bat connectedDebugAndroidTest` | **31 pruebas, 0 fallos** |
 | `gradlew.bat compileDebugKotlin` | `BUILD SUCCESSFUL` |
 | `gradlew.bat compileDebugAndroidTestKotlin` | `BUILD SUCCESSFUL` |
@@ -128,7 +128,7 @@ Las 31 pruebas instrumentadas incluyen 8 de `ReminderLifecycleTest`:
 - sincronizar dos veces una entrega de hoy conserva la misma hora de respaldo,
 - un respaldo vencido no se reprograma y queda marcado como entregado.
 
-También se conservan las pruebas del Worker, del DAO, del notificador y de las preferencias; estas últimas verifican las claves `fallback_target_<assignmentId>` y `fallback_delivered_<assignmentId>`, su persistencia y su eliminación selectiva. `ReminderPolicyTest` cubre el aviso estándar a las 08:00, el respaldo de 10 minutos solo para entregas de hoy, la omisión del aviso para una tarea de mañana cuyo aviso estándar ya pasó y el caso sin recordatorio cuando la fecha ya pasó. `ReminderNotifierTest` comprueba que el texto de la notificación incluye la hora programada. `ReminderCoordinatorTest` simula dos `sync()` consecutivos con el reloj avanzado, comprueba que el respaldo no cambia, que un respaldo vencido no genera otro trabajo y que editar la actividad limpia la marca de entregado.
+También se conservan las pruebas del Worker, del DAO, del notificador y de las preferencias; estas últimas verifican las claves `fallback_target_<assignmentId>` y `fallback_delivered_<assignmentId>`, su persistencia y su eliminación selectiva. `ReminderPolicyTest` cubre el aviso estándar a las 08:00, el respaldo de 10 minutos solo para entregas de hoy, la omisión del aviso para una tarea de mañana cuyo aviso estándar ya pasó y el caso sin recordatorio cuando la fecha ya pasó. `ReminderNotifierTest` comprueba que el texto de la notificación incluye la hora programada. `ReminderPreviewTest` cubre el texto cercano de 10 minutos, el aviso estándar con fecha y hora, la advertencia para fechas sin aviso y el caso sin fecha seleccionada. `ReminderCoordinatorTest` simula dos `sync()` consecutivos con el reloj avanzado, comprueba que el respaldo no cambia, que un respaldo vencido no genera otro trabajo y que editar la actividad limpia la marca de entregado.
 
 ### APK de evidencia
 

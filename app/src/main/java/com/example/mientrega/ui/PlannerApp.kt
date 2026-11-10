@@ -33,16 +33,12 @@ import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.example.mientrega.*
 import com.example.mientrega.data.*
-import com.example.mientrega.reminders.ReminderPolicy
-import java.time.Clock
 import java.time.LocalDate
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 private val subjectColors = listOf(Color(0xFF5650D8), Color(0xFF008B87), Color(0xFFAD5800), Color(0xFF8B48AE))
 private val subjectColorNames = listOf("Índigo", "Verde", "Naranja", "Violeta")
 private val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
-private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 private fun dateLabel(day: Long) = LocalDate.ofEpochDay(day).format(dateFormatter)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -366,21 +362,7 @@ private fun ActivityForm(current: Assignment?, subjects: List<Subject>, busy: Bo
     val context = LocalContext.current
     val error = if (attempted) Rules.activityError(title, subjectId, date) else null
     val selectedDate = Rules.parseDate(date)
-    val reminderMessage = selectedDate?.let { epochDay ->
-        val zone = ZoneId.systemDefault()
-        val reminder = ReminderPolicy.reminderInstant(
-            epochDay,
-            Clock.systemDefaultZone(),
-            zone
-        )
-        if (reminder == null) {
-            "⚠️ La fecha ya pasó o no se programará aviso"
-        } else {
-            val localReminder = reminder.atZone(zone)
-            "🔔 Te recordaremos el ${localReminder.toLocalDate().format(dateFormatter)} " +
-                "a las ${localReminder.toLocalTime().format(timeFormatter)}"
-        }
-    }
+    val reminderMessage = reminderPreviewMessage(selectedDate)
     Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Los campos con * son obligatorios.")
         OutlinedTextField(value = title, onValueChange = { title = it.take(100) }, label = { Text("Título *") }, singleLine = true,

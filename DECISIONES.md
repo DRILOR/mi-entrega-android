@@ -90,7 +90,7 @@ Cuando la hora guardada ya venció y la actividad sigue pendiente, el coordinado
 
 El coordinador calcula el instante del aviso y lo envía al scheduler en `KEY_REMINDER_AT`. El Worker lo recupera y lo pasa al notificador, que formatea la hora con la zona horaria del dispositivo. Así la notificación puede explicar `Recordatorio programado para las {HH:mm} · vence el {dd/MM/yyyy}` aunque WorkManager ejecute el trabajo unos minutos más tarde por sus ventanas de batería. Si el dato no llega, el Worker usa `Instant.now()` para no romper la notificación.
 
-El formulario de actividad reutiliza `ReminderPolicy.reminderInstant` con `Clock.systemDefaultZone()` y `ZoneId.systemDefault()` para mostrar una vista previa antes de guardar. Si devuelve `null`, muestra una advertencia en lugar de prometer un aviso que no se programará.
+El formulario de actividad reutiliza `ReminderPolicy.reminderInstant` con `Clock.systemDefaultZone()` y `ZoneId.systemDefault()` para mostrar una vista previa antes de guardar. Si devuelve `null`, muestra una advertencia en lugar de prometer un aviso que no se programará. Cuando el aviso calculado está a menos de 15 minutos se muestra como `🔔 Te recordaremos hoy en {N} minutos (a las {HH:mm})`, útil para el respaldo de una entrega de hoy; en los demás casos se muestra la fecha y la hora del aviso. El texto se calcula en una función pura (`ui/ReminderPreview.kt`) para poder probarlo sin Compose.
 
 ### Programación best-effort y ciclo de vida
 
@@ -104,4 +104,4 @@ Los avisos se resincronizan al volver a primer plano y cuando cambian la fecha, 
 - Pruebas instrumentadas con Room en memoria, notificador falso y WorkManager de prueba.
 - Pruebas del ciclo de vida completo: crear, editar, completar, eliminar, no duplicados y desactivar.
 - Pruebas del Worker, del DAO, del notificador real y de las preferencias.
-- Resultado de cierre: **61 pruebas unitarias y 31 instrumentadas en verde**.
+- Resultado de cierre: **66 pruebas unitarias y 31 instrumentadas en verde**.
