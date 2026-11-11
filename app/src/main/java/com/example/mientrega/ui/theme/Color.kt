@@ -11,6 +11,7 @@ val BlueGraySurface = Color(0xFF1E1E28)
 
 // Tonos de apoyo para el tema oscuro.
 val PurpleContainer = Color(0xFF4A0D63)
+val PurpleDeep = Color(0xFF2C0B3D)
 val OnPurpleContainer = Color(0xFFF3D9FF)
 val EmeraldContainer = Color(0xFF0B3D1E)
 val OnEmeraldContainer = Color(0xFF8CFFB0)

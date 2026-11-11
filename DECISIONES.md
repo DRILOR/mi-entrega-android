@@ -98,6 +98,8 @@ La aplicación usa la paleta del logo en el tema oscuro. `primary` es el morado 
 
 Además de los tres colores principales se ajustaron `onPrimary`, los contenedores y los tokens `surfaceContainer*` para que los textos mantengan contraste y las tarjetas de Material 3 usen el gris azulado en lugar del gris predeterminado. Las alertas de vencimiento usan `tertiary` en vez de `error` para distinguir una fecha atrasada de un error de validación. La navegación inferior y los chips seleccionados usan `primaryContainer` para conservar el morado como acento principal. La paleta vive en `ui/theme/Color.kt` y el esquema en `ui/theme/Theme.kt`; el tema claro conserva sus colores anteriores.
 
+Las pantallas retoman esa paleta con formas y elevación de Material 3: el botón principal de Inicio y Actividades usa `primary` con esquinas de 18 dp, la tarjeta de resumen usa `Brush.linearGradient` entre `surface` y `PurpleDeep`, y las tarjetas de actividad usan esquinas de 20 dp, borde `surface` y elevación de 8 dp. Los contadores de vencidas usan `tertiary`, los de para hoy y completadas usan `secondary`, y las cabeceras de sección repiten esos colores. “Restablecer filtros” es un `TextButton` con contenido `primary`; el switch activo y el estado de notificaciones usan morado y verde respectivamente. Son cambios exclusivamente visuales: no se modificó ninguna regla de estado, filtros, recordatorios ni persistencia.
+
 ### Programación best-effort y ciclo de vida
 
 Guardar una actividad en Room es la operación principal. La programación del recordatorio se ejecuta después y se envuelve en `reminderSafely`: si WorkManager falla, el error se registra en Logcat pero no se muestra al usuario ni se pierde el guardado.

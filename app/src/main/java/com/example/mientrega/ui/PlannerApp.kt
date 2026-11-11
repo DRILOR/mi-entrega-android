@@ -1,12 +1,14 @@
 package com.example.mientrega.ui
 
 import android.app.DatePickerDialog
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -17,12 +19,16 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -33,6 +39,7 @@ import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.example.mientrega.*
 import com.example.mientrega.data.*
+import com.example.mientrega.ui.theme.PurpleDeep
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -196,7 +203,13 @@ private fun EmptyMessage(title: String, description: String) {
 
 @Composable
 private fun SectionHeading(section: ActivitySection, count: Int) {
+    val color = when (section) {
+        ActivitySection.OVERDUE -> MaterialTheme.colorScheme.tertiary
+        ActivitySection.TODAY, ActivitySection.COMPLETED -> MaterialTheme.colorScheme.secondary
+        ActivitySection.UPCOMING -> MaterialTheme.colorScheme.onSurface
+    }
     Text("${section.label} ($count)", style = MaterialTheme.typography.titleLarge,
+        color = color,
         modifier = Modifier.padding(top = 8.dp).semantics { heading() })
 }
 
@@ -217,12 +230,16 @@ private fun ActivitiesScreen(
     val count = groups.values.sumOf { it.size }
     LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item(key = "add") {
-            Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = onAdd,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(18.dp)
+            ) {
                 Text(if (subjects.isEmpty()) "+ Crear primera materia" else "+ Nueva actividad")
             }
         }
         item(key = "filters") {
-            OutlinedCard(Modifier.fillMaxWidth()) {
+            OutlinedCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Filtrar actividades", style = MaterialTheme.typography.titleMedium)
                     Choice("Materia", if (subjectId == null) "Todas las materias"
@@ -233,7 +250,14 @@ private fun ActivitiesScreen(
                     Choice("Estado", status ?: "Todos los estados", listOf("Todos los estados") + Rules.statuses) { index ->
                         status = if (index == 0) null else Rules.statuses[index - 1]
                     }
-                    TextButton(onClick = { subjectId = null; status = null }, enabled = filters.isActive) {
+                    TextButton(
+                        onClick = { subjectId = null; status = null },
+                        enabled = filters.isActive,
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary,
+                            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) {
                         Text("Restablecer filtros")
                     }
                     Text("$count ${if (count == 1) "actividad" else "actividades"} · Fecha ↑, prioridad alta primero",
@@ -274,22 +298,67 @@ private fun HomeScreen(assignments: List<Assignment>, subjects: List<Subject>, t
         item {
             Text("Tu próximo paso, más claro", style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(12.dp))
-            Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(20.dp)) {
-                Text("${pending.size} ${if (pending.size == 1) "pendiente" else "pendientes"}", style = MaterialTheme.typography.headlineMedium)
-                val overdueCount = pending.count { it.dueDate < today }
-                val completedCount = assignments.count { it.status == "Completada" }
-                Text("$overdueCount ${if (overdueCount == 1) "vencida" else "vencidas"} · $completedCount ${if (completedCount == 1) "completada" else "completadas"}")
-                Text("${groups.getValue(ActivitySection.TODAY).size} para hoy · ${assignments.count { it.status == "En progreso" }} en progreso")
-                Text("Pendientes incluye las actividades en progreso.", style = MaterialTheme.typography.bodySmall)
-            } }
+            val overdueColor = MaterialTheme.colorScheme.tertiary
+            val successColor = MaterialTheme.colorScheme.secondary
+            val summaryGradient = Brush.linearGradient(
+                colors = listOf(
+                    MaterialTheme.colorScheme.surface,
+                    PurpleDeep
+                )
+            )
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+            ) {
+                Column(
+                    Modifier.fillMaxWidth().background(summaryGradient).padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text("${pending.size} ${if (pending.size == 1) "pendiente" else "pendientes"}", style = MaterialTheme.typography.headlineMedium)
+                    val overdueCount = pending.count { it.dueDate < today }
+                    val completedCount = assignments.count { it.status == "Completada" }
+                    Text(buildAnnotatedString {
+                        withStyle(SpanStyle(color = overdueColor, fontWeight = FontWeight.SemiBold)) {
+                            append("$overdueCount ${if (overdueCount == 1) "vencida" else "vencidas"}")
+                        }
+                        append(" · ")
+                        withStyle(SpanStyle(color = successColor, fontWeight = FontWeight.SemiBold)) {
+                            append("$completedCount ${if (completedCount == 1) "completada" else "completadas"}")
+                        }
+                    })
+                    val todayCount = groups.getValue(ActivitySection.TODAY).size
+                    val inProgressCount = assignments.count { it.status == "En progreso" }
+                    Text(buildAnnotatedString {
+                        withStyle(SpanStyle(color = successColor, fontWeight = FontWeight.SemiBold)) {
+                            append("$todayCount para hoy")
+                        }
+                        append(" · $inProgressCount en progreso")
+                    })
+                    Text("Pendientes incluye las actividades en progreso.", style = MaterialTheme.typography.bodySmall)
+                }
+            }
         }
-        item { Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) { Text(if (subjects.isEmpty()) "Agregar mi primera materia" else "Agregar actividad") } }
+        item {
+            Button(
+                onClick = onAdd,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                Text(if (subjects.isEmpty()) "Agregar mi primera materia" else "Agregar actividad")
+            }
+        }
         ActivitySection.entries.forEach { section ->
             val sectionItems = groups.getValue(section)
             item(key = section.name) { SectionHeading(section, sectionItems.size) }
             if (sectionItems.isEmpty()) item { Text(section.emptyMessage) }
             items(sectionItems, key = { it.id }) { item ->
-                Card(onClick = { onEdit(item) }, modifier = Modifier.fillMaxWidth()) {
+                Card(
+                    onClick = { onEdit(item) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                ) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(item.title, fontWeight = FontWeight.Bold)
                         Text(subjects.firstOrNull { it.id == item.subjectId }?.name ?: "Materia")
@@ -305,7 +374,13 @@ private fun HomeScreen(assignments: List<Assignment>, subjects: List<Subject>, t
 
 @Composable
 private fun ActivityCard(item: Assignment, subject: String, today: Long, busy: Boolean, onEdit: () -> Unit, onDelete: () -> Unit, onComplete: () -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surface)
+    ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(item.title, style = MaterialTheme.typography.titleMedium)
             Text(subject)

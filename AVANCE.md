@@ -87,6 +87,9 @@ Las cuentas y los datos están almacenados en este dispositivo. No existe sincro
 - Un canal de notificaciones propio y notificaciones con **tag e ID estables** para evitar duplicados. El texto incluye la hora del aviso: `Recordatorio programado para las {HH:mm} · vence el {dd/MM/yyyy}`.
 - Vista previa en el formulario de actividad: bajo el selector de fecha se muestra `🔔 Te recordaremos el {fecha} a las {hora}`; si el aviso está a menos de 15 minutos (respaldo de hoy), muestra `🔔 Te recordaremos hoy en {N} minutos (a las {HH:mm})`. Si no habrá aviso: `⚠️ La fecha ya pasó o no se programará aviso`.
 - Tema oscuro con la paleta del logo: botones primarios morados (`#7B1FA2`), estados completados y de éxito en verde esmeralda (`#00C853`), alertas de vencimiento en naranja (`#FF9800`), fondo azul oscuro (`#12121A`) y tarjetas gris azulado (`#1E1E28`).
+- Inicio: botón principal morado con esquinas redondeadas, tarjeta de resumen con degradado sutil entre `surface` y morado profundo, y contadores de vencidas en naranja y de para hoy/completadas en verde.
+- Actividades: tarjetas con esquinas redondeadas, borde `surface` y elevación más notoria; “Entrega vencida” en naranja y “Restablecer filtros” como botón de texto primario.
+- Ajustes: switch activo en morado y estado “Notificaciones activas” con campana y título en verde.
 - Cancelación de recordatorios al completar, eliminar o desactivar una actividad, al apagar el toggle y al cerrar sesión.
 - Resincronización al volver a primer plano (`ON_RESUME`) y cuando cambian la fecha, la hora, la zona horaria o se alcanza la medianoche.
 - El Worker relee la actividad desde Room y valida propietario, sesión activa, estado, fecha y materia antes de notificar.
