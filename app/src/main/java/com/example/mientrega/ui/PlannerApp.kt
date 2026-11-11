@@ -105,9 +105,21 @@ fun PlannerApp(model: PlannerViewModel) {
                 val labels = listOf("Inicio", "Materias", "Actividades")
                 val icons = listOf(Icons.Default.Home, Icons.Default.Book, Icons.AutoMirrored.Filled.List)
                 routes.forEachIndexed { index, target ->
-                    NavigationBarItem(selected = route == target, onClick = {
-                        nav.navigate(target) { popUpTo("home") { saveState = true }; launchSingleTop = true; restoreState = true }
-                    }, icon = { Icon(icons[index], contentDescription = null) }, label = { Text(labels[index]) })
+                    NavigationBarItem(
+                        selected = route == target,
+                        onClick = {
+                            nav.navigate(target) { popUpTo("home") { saveState = true }; launchSingleTop = true; restoreState = true }
+                        },
+                        icon = { Icon(icons[index], contentDescription = null) },
+                        label = { Text(labels[index]) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
                 }
             }
         },
@@ -283,7 +295,7 @@ private fun HomeScreen(assignments: List<Assignment>, subjects: List<Subject>, t
                         Text(subjects.firstOrNull { it.id == item.subjectId }?.name ?: "Materia")
                         Text("${item.type} · ${dateLabel(item.dueDate)}")
                         Text("Prioridad ${item.priority.lowercase()} · ${item.status}")
-                        if (section == ActivitySection.OVERDUE) Text("Entrega vencida", color = MaterialTheme.colorScheme.error)
+                        if (section == ActivitySection.OVERDUE) Text("Entrega vencida", color = MaterialTheme.colorScheme.tertiary)
                     }
                 }
             }
@@ -299,9 +311,14 @@ private fun ActivityCard(item: Assignment, subject: String, today: Long, busy: B
             Text(subject)
             Text("${item.type} · Entrega: ${dateLabel(item.dueDate)}")
             Text("Prioridad ${item.priority.lowercase()}", fontWeight = FontWeight.SemiBold)
-            Text(item.status, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+            Text(
+                item.status,
+                color = if (item.status == "Completada") MaterialTheme.colorScheme.secondary
+                    else MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
             if (item.description.isNotBlank()) Text(item.description)
-            if (ActivityOrganization.section(item, today) == ActivitySection.OVERDUE) Text("Entrega vencida", color = MaterialTheme.colorScheme.error)
+            if (ActivityOrganization.section(item, today) == ActivitySection.OVERDUE) Text("Entrega vencida", color = MaterialTheme.colorScheme.tertiary)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 TextButton(onClick = onEdit, enabled = !busy) { Text("Editar") }
                 TextButton(onClick = onDelete, enabled = !busy) { Text("Eliminar") }
@@ -322,9 +339,18 @@ private fun SubjectForm(current: Subject?, busy: Boolean, onCancel: () -> Unit, 
             isError = error != null, supportingText = { Text(error ?: "Máximo 60 caracteres") }, modifier = Modifier.fillMaxWidth())
         Text("Color", style = MaterialTheme.typography.titleMedium)
         subjectColors.forEachIndexed { index, value ->
-            FilterChip(selected = color == index, onClick = { color = index }, label = { Text(subjectColorNames[index]) }, leadingIcon = {
-                Box(Modifier.size(16.dp).background(value, CircleShape))
-            })
+            FilterChip(
+                selected = color == index,
+                onClick = { color = index },
+                label = { Text(subjectColorNames[index]) },
+                leadingIcon = {
+                    Box(Modifier.size(16.dp).background(value, CircleShape))
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            )
         }
         Button(onClick = { attempted = true; if (Rules.subjectError(name) == null) onSave(Subject(current?.id ?: 0, name, color)) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Guardando…" else "Guardar materia") }
         OutlinedButton(onClick = onCancel, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Cancelar") }

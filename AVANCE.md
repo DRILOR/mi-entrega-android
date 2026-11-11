@@ -1,6 +1,6 @@
 # Avance de Mi Entrega
 
-**Actualizado:** 9 de noviembre de 2026  
+**Actualizado:** 10 de noviembre de 2026  
 **Rama de la Etapa 3:** `etapa3/integrante3-recordatorios`  
 **Responsable de la Etapa 1:** Dailer Almanza  
 **Responsable de la Etapa 3:** Integrante 3  
@@ -86,6 +86,7 @@ Las cuentas y los datos están almacenados en este dispositivo. No existe sincro
   - acceso a los ajustes del sistema cuando la denegación es permanente.
 - Un canal de notificaciones propio y notificaciones con **tag e ID estables** para evitar duplicados. El texto incluye la hora del aviso: `Recordatorio programado para las {HH:mm} · vence el {dd/MM/yyyy}`.
 - Vista previa en el formulario de actividad: bajo el selector de fecha se muestra `🔔 Te recordaremos el {fecha} a las {hora}`; si el aviso está a menos de 15 minutos (respaldo de hoy), muestra `🔔 Te recordaremos hoy en {N} minutos (a las {HH:mm})`. Si no habrá aviso: `⚠️ La fecha ya pasó o no se programará aviso`.
+- Tema oscuro con la paleta del logo: botones primarios morados (`#7B1FA2`), estados completados y de éxito en verde esmeralda (`#00C853`), alertas de vencimiento en naranja (`#FF9800`), fondo azul oscuro (`#12121A`) y tarjetas gris azulado (`#1E1E28`).
 - Cancelación de recordatorios al completar, eliminar o desactivar una actividad, al apagar el toggle y al cerrar sesión.
 - Resincronización al volver a primer plano (`ON_RESUME`) y cuando cambian la fecha, la hora, la zona horaria o se alcanza la medianoche.
 - El Worker relee la actividad desde Room y valida propietario, sesión activa, estado, fecha y materia antes de notificar.
@@ -102,6 +103,8 @@ Las cuentas y los datos están almacenados en este dispositivo. No existe sincro
 - `reminders/ReminderDependencies.kt`: dependencias reales del Worker y sustitutos de prueba.
 - `reminders/NotificationPermission.kt`: estado del permiso y apertura de ajustes.
 - `ui/SettingsScreen.kt`: switch, estado del permiso y textos explicativos.
+- `ui/theme/Color.kt`: colores base de la paleta del logo.
+- `ui/theme/Theme.kt`: tema claro/oscuro y `darkColorScheme` con la paleta del logo.
 - `PlannerViewModel.kt` y `ui/PlannerApp.kt`: integración con el guardado, la sesión y la navegación.
 
 ### Pruebas y evidencias

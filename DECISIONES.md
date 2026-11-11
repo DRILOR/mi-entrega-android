@@ -92,6 +92,12 @@ El coordinador calcula el instante del aviso y lo envía al scheduler en `KEY_RE
 
 El formulario de actividad reutiliza `ReminderPolicy.reminderInstant` con `Clock.systemDefaultZone()` y `ZoneId.systemDefault()` para mostrar una vista previa antes de guardar. Si devuelve `null`, muestra una advertencia en lugar de prometer un aviso que no se programará. Cuando el aviso calculado está a menos de 15 minutos se muestra como `🔔 Te recordaremos hoy en {N} minutos (a las {HH:mm})`, útil para el respaldo de una entrega de hoy; en los demás casos se muestra la fecha y la hora del aviso. El texto se calcula en una función pura (`ui/ReminderPreview.kt`) para poder probarlo sin Compose.
 
+### Tema visual basado en el logo
+
+La aplicación usa la paleta del logo en el tema oscuro. `primary` es el morado vibrante `#7B1FA2` para botones y acciones principales; `secondary` es el verde esmeralda `#00C853`, usado en el estado **Completada** y en la tarjeta de notificaciones activas; `tertiary` es el naranja `#FF9800`, reservado para las alertas de vencimiento. El fondo es azul oscuro profundo `#12121A` y la superficie de tarjetas es gris azulado `#1E1E28`.
+
+Además de los tres colores principales se ajustaron `onPrimary`, los contenedores y los tokens `surfaceContainer*` para que los textos mantengan contraste y las tarjetas de Material 3 usen el gris azulado en lugar del gris predeterminado. Las alertas de vencimiento usan `tertiary` en vez de `error` para distinguir una fecha atrasada de un error de validación. La navegación inferior y los chips seleccionados usan `primaryContainer` para conservar el morado como acento principal. La paleta vive en `ui/theme/Color.kt` y el esquema en `ui/theme/Theme.kt`; el tema claro conserva sus colores anteriores.
+
 ### Programación best-effort y ciclo de vida
 
 Guardar una actividad en Room es la operación principal. La programación del recordatorio se ejecuta después y se envuelve en `reminderSafely`: si WorkManager falla, el error se registra en Logcat pero no se muestra al usuario ni se pierde el guardado.
